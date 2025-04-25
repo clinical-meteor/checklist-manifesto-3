@@ -8,6 +8,12 @@
     "visualize": "meteor --production --extra-packages bundle-visualizer"
   },
   "dependencies": {
+    "@accounts/client": "^0.33.1",
+    "@accounts/client-password": "^0.32.2",
+    "@accounts/meteor-adapter": "^0.1.1",
+    "@accounts/mongo": "^0.34.1",
+    "@accounts/password": "^0.32.2",
+    "@accounts/server": "^0.33.1",
     "@babel/runtime": "^7.23.5",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
@@ -16,6 +22,7 @@
     "@mui/material": "^7.0.2",
     "@mui/x-date-pickers": "^8.1.0",
     "bcrypt": "^5.1.1",
+    "jwt-decode": "^4.0.0",
     "lodash": "^4.17.21",
     "meteor-node-stubs": "^1.2.7",
     "moment": "^2.30.1",

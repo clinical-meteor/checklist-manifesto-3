@@ -37,26 +37,14 @@ export function App() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [filter, setFilter] = useState('all');
 
-  // Track user authentication and loading states
+  // Use Meteor's built-in auth tracking
   const { user, isLoading } = useTracker(() => {
-    // Check if user is logged in via session storage
-    const isLoggedIn = sessionStorage.getItem('isLoggedIn') === 'true';
-    const userId = sessionStorage.getItem('userId');
-    const username = sessionStorage.getItem('username');
-    
-    if (isLoggedIn && userId && username) {
-      return {
-        isLoading: false,
-        user: {
-          _id: userId,
-          username: username
-        }
-      };
-    }
+    // Set up subscription to the user data
+    const userSub = Meteor.subscribe('userData');
     
     return {
-      isLoading: false,
-      user: null
+      isLoading: !userSub.ready(),
+      user: Meteor.user()
     };
   });
 
@@ -65,15 +53,16 @@ export function App() {
     setDrawerOpen(!drawerOpen);
   }
 
-  // Handle logout
+  // Handle logout with Meteor's built-in logout
   function handleLogout() {
     setDrawerOpen(false);
-    // Clear session storage
-    sessionStorage.removeItem('isLoggedIn');
-    sessionStorage.removeItem('userId');
-    sessionStorage.removeItem('username');
-    // Reload page to update UI
-    window.location.reload();
+    
+    Meteor.logout((err) => {
+      if (err) {
+        console.error('Logout error:', err);
+        alert('Failed to logout. Please try again.');
+      }
+    });
   }
 
   // Handle filter changes

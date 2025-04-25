@@ -4,9 +4,14 @@ import { createRoot } from 'react-dom/client';
 import { Meteor } from 'meteor/meteor';
 import { App } from '/imports/ui/App';
 
+// Import accounts-js client configuration
+import '/imports/startup/client/accounts-config';
+
 // Import Material-UI theme provider and base styles
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
 
 // Create a theme instance
 const theme = createTheme({
@@ -40,7 +45,9 @@ Meteor.startup(function() {
   root.render(
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <App />
+      <LocalizationProvider dateAdapter={AdapterMoment}>
+        <App />
+      </LocalizationProvider>
     </ThemeProvider>
   );
 });

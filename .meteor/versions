@@ -1,4 +1,5 @@
 accounts-base@3.0.0
+accounts-password@3.0.0
 allow-deny@2.0.0
 autoupdate@2.0.0
 babel-compiler@7.11.2
@@ -24,6 +25,7 @@ ecmascript-runtime@0.8.3
 ecmascript-runtime-client@0.12.2
 ecmascript-runtime-server@0.11.1
 ejson@1.1.4
+email@3.0.100
 es5-shim@4.8.1
 facts-base@1.0.2
 fetch@0.1.5
