@@ -1,120 +1,83 @@
 // imports/startup/server/accounts-config.js
 import { Meteor } from 'meteor/meteor';
-import { Accounts } from 'meteor/accounts-base';
-import { MongoInternals } from 'meteor/mongo';
-import { AccountsServer } from '@accounts/server';
+import { Mongo } from 'meteor/mongo';
+import { get } from 'lodash';
+
+// Import accounts-js packages
+import AccountsServer from '@accounts/server';
 import AccountsPassword from '@accounts/password';
-import { Mongo as AccountsMongo } from '@accounts/mongo';
-import { wrapMeteorServer } from '@accounts/meteor-adapter';
+import MongoDBInterface from '@accounts/mongo';
 
-// Get MongoDB connection from Meteor's MongoInternals
-const db = MongoInternals.defaultRemoteCollectionDriver().mongo.db;
-
-// Initialize AccountsMongo to work with Meteor's MongoDB connection
-const accountsMongo = new AccountsMongo(db, {
-  // Use Meteor's existing collection names
-  collectionName: 'users',
-  sessionCollectionName: 'meteor_accounts_sessions',
-  // Don't convert IDs to MongoDB ObjectID since Meteor typically uses string IDs
-  convertUserIdToMongoObjectId: false,
-  convertSessionIdToMongoObjectId: false,
-});
-
-// Initialize accounts-password package
-const accountsPassword = new AccountsPassword({
-  // Uncomment this if you want to require email verification
-  // requireEmailVerification: true,
-  // Configure password validation logic if needed
-  validatePassword: (password) => {
-    // You can add custom password validation
-    return password.length >= 6;
-  }
-});
-
-// Configure and initialize AccountsServer
-export const accountsServer = new AccountsServer(
-  {
-    // Server options
-    tokenSecret: Meteor.settings.accounts?.tokenSecret || 'your-super-secret-token-secret',
-    // Allow easy login for demo purposes - you would set to false in a production environment
-    ambiguousErrorMessages: false, 
-    // Configure email templates (uses Meteor's email package under the hood)
-    sendMail: async (mail) => {
-      // In a real app, configure this to send emails
-      console.log('Email to be sent:', mail);
-      // Using Meteor's email package
-      if (Meteor.settings.mail?.enabled) {
-        try {
-          const { Email } = require('meteor/email');
-          const { to, from, subject, text, html } = mail;
-          Email.send({ to, from, subject, text, html });
-        } catch (error) {
-          console.error('Failed to send email:', error);
-        }
-      }
+// Create a MongoDB interface for accounts-js using Meteor's MongoDB connection
+export function setupAccountsJs() {
+  // Get MongoDB connection from Meteor
+  const db = Mongo.Collection.prototype.rawDatabase();
+  
+  // Create MongoDB interface for accounts-js
+  const mongoDbInterface = new MongoDBInterface(db);
+  
+  // Create password service
+  const passwordService = new AccountsPassword({
+    // Configure password service
+    requireEmailVerification: false,
+    validatePassword: function(password) {
+      // Minimum password validation - can be expanded
+      return password.length >= 6;
+    }
+  });
+  
+  // Create the accounts server
+  const accountsServer = new AccountsServer(
+    {
+      // Server options
+      tokenSecret: get(Meteor.settings, 'accounts.tokenSecret', 'secret-token-for-dev'),
+      // How long tokens are valid
+      tokenConfigs: {
+        accessToken: { expiresIn: '1d' },
+        refreshToken: { expiresIn: '7d' },
+      },
+      // Email settings
+      emailTemplates: {
+        from: get(Meteor.settings, 'accounts.emailFrom', 'no-reply@checklistmanifesto.com'),
+      },
+      // Optionally enable auto-login after registration
+      enableAutologin: true,
     },
-    // URL for email links
-    siteUrl: Meteor.settings.ROOT_URL || 'http://localhost:3000',
-  },
-  // Authentication services
-  {
-    password: accountsPassword,
-  },
-  // Database adapter
-  accountsMongo
-);
-
-// Setup database indexes
-Meteor.startup(async () => {
-  try {
-    await accountsMongo.setupIndexes();
-    console.log('Accounts-js indexes created successfully');
-  } catch (error) {
-    console.error('Error creating accounts-js indexes:', error);
-  }
-});
-
-// Create server validator
-const ServerValidator = {
-  validateToken: async (accessToken, context) => {
-    // Validate the token using accounts-js
-    try {
-      const user = await accountsServer.resumeSession(accessToken);
-      return user;
-    } catch (error) {
-      console.error('Error validating token:', error);
-      throw error;
-    }
-  }
-};
-
-// Integrate with Meteor's accounts system
-wrapMeteorServer(Meteor, Accounts, ServerValidator);
-
-// Ensure an admin user exists at startup
-export async function ensureAdminUser(username, password) {
-  try {
-    // Check if admin user exists
-    const adminUser = await accountsMongo.findUserByUsername(username);
-    
-    if (!adminUser) {
-      console.log(`Creating user: ${username}`);
-      
-      // Create the user via accounts-js
-      const userId = await accountsPassword.createUser({
-        username,
-        password,
-        profile: { role: 'admin' }
-      });
-      
-      console.log(`Created user with ID: ${userId}`);
-      return userId;
-    } else {
-      console.log(`User ${username} already exists`);
-      return adminUser.id;
-    }
-  } catch (error) {
-    console.error('Error ensuring admin user:', error);
-    throw error;
-  }
+    {
+      // Authentication services
+      password: passwordService,
+    },
+    // Database interface
+    mongoDbInterface
+  );
+  
+  console.log('Accounts-js server initialized successfully');
+  
+  return {
+    accountsServer,
+    passwordService
+  };
 }
+
+// Setup REST API endpoints
+export function setupAccountsEndpoints(app) {
+  if (!app) {
+    console.warn('Express app not provided, skipping accounts REST endpoints setup');
+    return;
+  }
+  
+  // Create an Express.js compatible endpoints
+  const { accountsServer, passwordService } = setupAccountsJs();
+  
+  // Import endpoint handlers from accounts-password
+  const { resetPassword, verifyEmail } = require('@accounts/password/lib/endpoints');
+  
+  // Setup endpoints
+  app.post('/accounts/reset-password/:token', resetPassword(passwordService));
+  app.get('/accounts/verify-email/:token', verifyEmail(passwordService));
+  
+  console.log('Accounts-js REST endpoints initialized');
+}
+
+// Export the initialized services
+export const { accountsServer, passwordService } = setupAccountsJs();

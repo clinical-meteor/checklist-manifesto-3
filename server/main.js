@@ -1,16 +1,17 @@
 // server/main.js
 import { Meteor } from 'meteor/meteor';
-import { Accounts } from 'meteor/accounts-base';
 import { get } from 'lodash';
 import { TasksCollection } from '/imports/db/TasksCollection';
 import moment from 'moment';
 import { loadEnvironmentSettings } from './settings';
-import { ensureAdminUser } from '../imports/startup/server/accounts-setup';
+import { ensureAdminUser, setupAccountsLoginHandlers } from './accounts-patch';
 
 // Import methods and publications
 import '/imports/api/tasks/methods';
 import '/imports/api/tasks/publications';
+import '/imports/api/users/methods';
 import '/imports/api/users/publications';
+import '/imports/api/users/login-method';
 
 // Function to create seed tasks
 async function insertTask(description, userId, options = {}) {
@@ -50,7 +51,10 @@ Meteor.startup(async function() {
   // Load settings from environment variables
   loadEnvironmentSettings();
   
-  // Create admin user if it doesn't exist
+  // Set up accounts login handlers
+  setupAccountsLoginHandlers();
+  
+  // Create admin user
   const SEED_USERNAME = Meteor.settings.seedUsername || 'admin';
   const SEED_PASSWORD = Meteor.settings.seedPassword || 'password';
   
