@@ -65,6 +65,7 @@ The application follows the 12-factor app methodology and can be configured usin
 
 
 
+
 ## FHIR Compliance
 
 This application implements a simplified version of the [FHIR Task Resource](https://www.hl7.org/fhir/task.html). The schema includes core elements such as:
