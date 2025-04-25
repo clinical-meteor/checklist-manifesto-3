@@ -43,25 +43,31 @@ export function TaskForm() {
     
     setIsSubmitting(true);
     
-    // Simulate task creation
-    setTimeout(() => {
-      // In a real app, this would save to a database
-      console.log('Created task:', {
-        description,
-        priority,
-        dueDate: dueDate ? dueDate.toDate() : null
-      });
-      
-      // Reset form
-      setDescription('');
-      setPriority('routine');
-      setDueDate(null);
-      setExpanded(false);
+    // Create the options object with proper date handling
+    const options = {
+      priority
+    };
+    
+    // Only add dueDate if it exists
+    if (dueDate) {
+      options.dueDate = dueDate.toDate();
+    }
+    
+    // Call the Meteor method to create a task
+    Meteor.call('tasks.insert', description, options, (error, result) => {
       setIsSubmitting(false);
       
-      // Show a success message (in a real app)
-      alert('Task created successfully! (Demo only)');
-    }, 1000);
+      if (error) {
+        console.error('Error creating task:', error);
+        alert(`Failed to create task: ${error.message}`);
+      } else {
+        // Reset form on success
+        setDescription('');
+        setPriority('routine');
+        setDueDate(null);
+        setExpanded(false);
+      }
+    });
   }
 
   // Toggle expanded advanced options
