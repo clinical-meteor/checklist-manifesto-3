@@ -62,33 +62,8 @@ The application follows the 12-factor app methodology and can be configured usin
 | `API_AUTH_SECRET` | JWT secret for API auth | `default-secret-change-me` |
 | `LOG_LEVEL` | Application logging level | `info` |
 
-## Project Structure
 
-```
-checklist-manifesto/
-├── client/                # Client-only code
-├── imports/               # Code used on both client and server
-│   ├── api/               # API methods and publications
-│   ├── db/                # Database collections
-│   ├── ui/                # React components
-│   └── utils/             # Utility functions
-├── server/                # Server-only code
-└── tests/                 # Test files
-```
 
-## Testing
-
-Run the tests with:
-
-```bash
-meteor test --once --driver-package meteortesting:mocha
-```
-
-For continuous testing during development:
-
-```bash
-meteor test --driver-package meteortesting:mocha
-```
 
 ## FHIR Compliance
 
