@@ -1,83 +1,101 @@
 // imports/startup/server/accounts-config.js
 import { Meteor } from 'meteor/meteor';
-import { Mongo } from 'meteor/mongo';
+import { Accounts } from 'meteor/accounts-base';
+import { check } from 'meteor/check';
 import { get } from 'lodash';
 
-// Import accounts-js packages
-import AccountsServer from '@accounts/server';
-import AccountsPassword from '@accounts/password';
-import MongoDBInterface from '@accounts/mongo';
+// Configure account creation and login behavior
+Accounts.config({
+  sendVerificationEmail: false,
+  forbidClientAccountCreation: false
+});
 
-// Create a MongoDB interface for accounts-js using Meteor's MongoDB connection
-export function setupAccountsJs() {
-  // Get MongoDB connection from Meteor
-  const db = Mongo.Collection.prototype.rawDatabase();
-  
-  // Create MongoDB interface for accounts-js
-  const mongoDbInterface = new MongoDBInterface(db);
-  
-  // Create password service
-  const passwordService = new AccountsPassword({
-    // Configure password service
-    requireEmailVerification: false,
-    validatePassword: function(password) {
-      // Minimum password validation - can be expanded
-      return password.length >= 6;
+// Configure email verification (optional)
+Accounts.emailTemplates.from = Meteor.settings.email?.from || 'Checklist Manifesto <no-reply@example.com>';
+
+// Configure password reset email settings
+Accounts.emailTemplates.resetPassword = {
+  subject: () => 'Reset Your Password - Checklist Manifesto',
+  text: (user, url) => `Hello ${user.username || user.emails[0].address},
+
+To reset your password, simply click the link below:
+
+${url}
+
+If you did not request this password reset, please ignore this email.
+
+Thanks,
+The Checklist Manifesto Team`
+};
+
+// Create admin user at startup if it doesn't exist
+export async function ensureAdminUser(username, password) {
+  try {
+    // Check if admin user exists
+    const adminUser = await Meteor.users.findOneAsync({ username });
+    
+    if (!adminUser) {
+      console.log(`Creating user: ${username}`);
+      
+      // Create the admin user
+      const userId = Accounts.createUser({
+        username,
+        password,
+        profile: { role: 'admin' }
+      });
+      
+      console.log(`Created user with ID: ${userId}`);
+      return userId;
+    } else {
+      console.log(`User ${username} already exists`);
+      return adminUser._id;
     }
-  });
-  
-  // Create the accounts server
-  const accountsServer = new AccountsServer(
-    {
-      // Server options
-      tokenSecret: get(Meteor.settings, 'accounts.tokenSecret', 'secret-token-for-dev'),
-      // How long tokens are valid
-      tokenConfigs: {
-        accessToken: { expiresIn: '1d' },
-        refreshToken: { expiresIn: '7d' },
-      },
-      // Email settings
-      emailTemplates: {
-        from: get(Meteor.settings, 'accounts.emailFrom', 'no-reply@checklistmanifesto.com'),
-      },
-      // Optionally enable auto-login after registration
-      enableAutologin: true,
-    },
-    {
-      // Authentication services
-      password: passwordService,
-    },
-    // Database interface
-    mongoDbInterface
-  );
-  
-  console.log('Accounts-js server initialized successfully');
-  
-  return {
-    accountsServer,
-    passwordService
-  };
-}
-
-// Setup REST API endpoints
-export function setupAccountsEndpoints(app) {
-  if (!app) {
-    console.warn('Express app not provided, skipping accounts REST endpoints setup');
-    return;
+  } catch (error) {
+    console.error('Error ensuring admin user:', error);
+    throw error;
   }
-  
-  // Create an Express.js compatible endpoints
-  const { accountsServer, passwordService } = setupAccountsJs();
-  
-  // Import endpoint handlers from accounts-password
-  const { resetPassword, verifyEmail } = require('@accounts/password/lib/endpoints');
-  
-  // Setup endpoints
-  app.post('/accounts/reset-password/:token', resetPassword(passwordService));
-  app.get('/accounts/verify-email/:token', verifyEmail(passwordService));
-  
-  console.log('Accounts-js REST endpoints initialized');
 }
 
-// Export the initialized services
-export const { accountsServer, passwordService } = setupAccountsJs();
+// Setup account login handlers
+export function setupAccountsLoginHandlers() {
+  // Register login handler if needed
+  // This is optional as Meteor's accounts-password already handles this
+  Accounts.registerLoginHandler('checklist-custom', function(options) {
+    // Custom login logic if needed
+    return undefined; // Let other handlers handle it
+  });
+}
+
+// Define custom authentication methods
+Meteor.methods({
+  // Method to get current user data
+  'user.getProfile'() {
+    if (!this.userId) {
+      throw new Meteor.Error('not-authorized', 'You must be logged in');
+    }
+    
+    return Meteor.users.findOne(
+      { _id: this.userId },
+      { fields: { 
+        username: 1, 
+        emails: 1, 
+        profile: 1,
+        createdAt: 1
+      }}
+    );
+  },
+  
+  // Update user profile
+  'user.updateProfile'(profileData) {
+    check(profileData, Object);
+    
+    if (!this.userId) {
+      throw new Meteor.Error('not-authorized', 'You must be logged in');
+    }
+    
+    return Meteor.users.update(
+      { _id: this.userId },
+      { $set: { 'profile': profileData }}
+    );
+  }
+});

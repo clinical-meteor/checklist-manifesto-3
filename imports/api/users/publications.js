@@ -1,6 +1,5 @@
 // imports/api/users/publications.js
 import { Meteor } from 'meteor/meteor';
-import { accountsServer } from '../../startup/server/accounts-config';
 
 // Publish the current user's data
 Meteor.publish('userData', function() {
@@ -8,7 +7,7 @@ Meteor.publish('userData', function() {
     return this.ready();
   }
   
-  // Use the accounts-js userId
+  // Use the userId from the DDP connection
   const userId = this.userId;
   
   // Create a MongoDB cursor for reactive data

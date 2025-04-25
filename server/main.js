@@ -4,14 +4,13 @@ import { get } from 'lodash';
 import { TasksCollection } from '/imports/db/TasksCollection';
 import moment from 'moment';
 import { loadEnvironmentSettings } from './settings';
-import { ensureAdminUser, setupAccountsLoginHandlers } from './accounts-patch';
+import { ensureAdminUser, setupAccountsLoginHandlers } from '/imports/startup/server/accounts-config';
 
 // Import methods and publications
 import '/imports/api/tasks/methods';
 import '/imports/api/tasks/publications';
 import '/imports/api/users/methods';
 import '/imports/api/users/publications';
-import '/imports/api/users/login-method';
 
 // Function to create seed tasks
 async function insertTask(description, userId, options = {}) {
