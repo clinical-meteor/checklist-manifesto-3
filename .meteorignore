@@ -1,0 +1,8 @@
+# Ignore docs folder (GitHub Pages website)
+/docs/
+/scripts/
+
+# Ignore development files
+.git/
+.github/
+.vscode/
