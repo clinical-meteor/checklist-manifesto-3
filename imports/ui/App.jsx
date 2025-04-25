@@ -44,25 +44,12 @@ export function App() {
 
   // Track user authentication and loading states
   const { user, isLoading } = useTracker(function() {
-    // Check if user is logged in via localStorage
-    const accessToken = localStorage.getItem('accessToken');
-    const userId = localStorage.getItem('userId');
-    const username = localStorage.getItem('username');
-    
-    if (accessToken && userId && username) {
-      return {
-        isLoading: false,
-        user: {
-          _id: userId,
-          username: username,
-          accessToken: accessToken
-        }
-      };
-    }
+    // Subscribe to the user data
+    const userSub = Meteor.subscribe('userData');
     
     return {
-      isLoading: false,
-      user: null
+      isLoading: !userSub.ready(),
+      user: Meteor.user()
     };
   });
 
@@ -75,36 +62,14 @@ export function App() {
   function handleLogout() {
     setDrawerOpen(false);
     
-    const accessToken = localStorage.getItem('accessToken');
-    
-    if (accessToken) {
-      // Call the logout method
-      Meteor.call('accounts.logout', accessToken, function(err) {
-        if (err) {
-          console.error('Logout error:', err);
-        }
-        
-        // Clear localStorage
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('userId');
-        localStorage.removeItem('username');
-        localStorage.removeItem('isLoggedIn');
-        
-        // Reload page to update UI
+    Meteor.logout(function(err) {
+      if (err) {
+        console.error('Logout error:', err);
+      } else {
+        // Refresh page to update UI
         window.location.reload();
-      });
-    } else {
-      // If no token found, just clear localStorage
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('userId');
-      localStorage.removeItem('username');
-      localStorage.removeItem('isLoggedIn');
-      
-      // Reload page to update UI
-      window.location.reload();
-    }
+      }
+    });
   }
 
   // Handle filter changes
@@ -140,7 +105,7 @@ export function App() {
           </Box>
           
           {authTab === 0 ? (
-            <LoginForm onSwitchToRegister={function() { setAuthTab(1); }} />
+            <LoginForm />
           ) : (
             <RegisterForm onSwitchToLogin={function() { setAuthTab(0); }} />
           )}

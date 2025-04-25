@@ -1,22 +1,27 @@
 // imports/startup/server/accounts-config.js
 import { Meteor } from 'meteor/meteor';
 import { Accounts } from 'meteor/accounts-base';
-import { check } from 'meteor/check';
 import { get } from 'lodash';
 
-// Configure account creation and login behavior
+// Configure account creation validation
 Accounts.config({
   sendVerificationEmail: false,
   forbidClientAccountCreation: false
 });
 
-// Configure email verification (optional)
-Accounts.emailTemplates.from = Meteor.settings.email?.from || 'Checklist Manifesto <no-reply@example.com>';
+// Configure email templates
+Accounts.emailTemplates.from = function() {
+  // Get from email from settings
+  return get(Meteor.settings, 'email.from', 'Checklist Manifesto <no-reply@example.com>');
+};
 
 // Configure password reset email settings
 Accounts.emailTemplates.resetPassword = {
-  subject: () => 'Reset Your Password - Checklist Manifesto',
-  text: (user, url) => `Hello ${user.username || user.emails[0].address},
+  subject: function() {
+    return 'Reset Your Password - Checklist Manifesto';
+  },
+  text: function(user, url) {
+    return `Hello ${get(user, 'username', 'User')},
 
 To reset your password, simply click the link below:
 
@@ -25,7 +30,27 @@ ${url}
 If you did not request this password reset, please ignore this email.
 
 Thanks,
-The Checklist Manifesto Team`
+The Checklist Manifesto Team`;
+  }
+};
+
+// Configure email verification email settings
+Accounts.emailTemplates.verifyEmail = {
+  subject: function() {
+    return 'Verify Your Email - Checklist Manifesto';
+  },
+  text: function(user, url) {
+    return `Hello ${get(user, 'username', 'User')},
+
+To verify your email address, simply click the link below:
+
+${url}
+
+If you did not create an account, please ignore this email.
+
+Thanks,
+The Checklist Manifesto Team`;
+  }
 };
 
 // Create admin user at startup if it doesn't exist
@@ -56,46 +81,81 @@ export async function ensureAdminUser(username, password) {
   }
 }
 
-// Setup account login handlers
+// Setup custom account login handlers
 export function setupAccountsLoginHandlers() {
-  // Register login handler if needed
-  // This is optional as Meteor's accounts-password already handles this
-  Accounts.registerLoginHandler('checklist-custom', function(options) {
-    // Custom login logic if needed
-    return undefined; // Let other handlers handle it
-  });
+  // This is only needed if you want to override Meteor's default login handlers
+  // Usually you don't need to call this as Meteor's accounts-password already sets up handlers
 }
 
-// Define custom authentication methods
+// Define custom authentication methods if needed
 Meteor.methods({
-  // Method to get current user data
-  'user.getProfile'() {
+  // Method to get current user profile
+  'user.getProfile': function() {
     if (!this.userId) {
       throw new Meteor.Error('not-authorized', 'You must be logged in');
     }
     
     return Meteor.users.findOne(
       { _id: this.userId },
-      { fields: { 
-        username: 1, 
-        emails: 1, 
-        profile: 1,
-        createdAt: 1
-      }}
+      { 
+        fields: { 
+          username: 1, 
+          emails: 1, 
+          profile: 1,
+          createdAt: 1
+        }
+      }
     );
   },
   
-  // Update user profile
-  'user.updateProfile'(profileData) {
-    check(profileData, Object);
-    
+  // Method to update user profile
+  'user.updateProfile': function(profileData) {
     if (!this.userId) {
       throw new Meteor.Error('not-authorized', 'You must be logged in');
     }
+    
+    // Validate profile data if needed
     
     return Meteor.users.update(
       { _id: this.userId },
       { $set: { 'profile': profileData }}
     );
+  },
+  
+  // Method to send password reset email
+  'user.sendResetPasswordEmail': function(email) {
+    // For security, we don't reveal if the email exists
+    try {
+      const user = Accounts.findUserByEmail(email);
+      if (user) {
+        Accounts.sendResetPasswordEmail(user._id);
+      }
+      return { success: true };
+    } catch (error) {
+      console.error('Error sending reset password email:', error);
+      // Still return success for security
+      return { success: true };
+    }
   }
 });
+
+// Set up user publications
+if (Meteor.isServer) {
+  // Publish the current user's data
+  Meteor.publish('userData', function() {
+    if (!this.userId) {
+      return this.ready();
+    }
+    
+    return Meteor.users.find(
+      { _id: this.userId },
+      { 
+        fields: { 
+          username: 1,
+          emails: 1,
+          profile: 1
+        } 
+      }
+    );
+  });
+}
