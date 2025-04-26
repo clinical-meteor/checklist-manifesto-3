@@ -1,5 +1,5 @@
 // imports/ui/App.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Meteor } from 'meteor/meteor';
 import { useTracker } from 'meteor/react-meteor-data';
 import { get } from 'lodash';
@@ -36,11 +36,13 @@ import { TaskForm } from './TaskForm';
 import { TaskList } from './TaskList';
 import { LoginForm } from './LoginForm';
 import { RegisterForm } from './RegisterForm';
+import { FirstRunSetup } from './FirstRunSetup';
 
 export function App() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [filter, setFilter] = useState('all');
   const [authTab, setAuthTab] = useState(0); // 0 for login, 1 for register
+  const [isFirstRun, setIsFirstRun] = useState(false);
 
   // Track user authentication and loading states
   const { user, isLoading } = useTracker(function() {
@@ -52,6 +54,20 @@ export function App() {
       user: Meteor.user()
     };
   });
+
+  // Check if this is first run
+  useEffect(function() {
+    // Only check first run status if not logged in
+    if (!user) {
+      Meteor.call('accounts.isFirstRun', function(error, result) {
+        if (!error && result) {
+          setIsFirstRun(true);
+          // If first run, default to registration tab
+          setAuthTab(1);
+        }
+      });
+    }
+  }, [user]);
 
   // Handle drawer toggle
   function handleDrawerToggle() {
@@ -92,6 +108,11 @@ export function App() {
     );
   }
 
+  // Render first-run setup if needed
+  if (isFirstRun && !user) {
+    return <FirstRunSetup onComplete={() => setIsFirstRun(false)} />;
+  }
+
   // Render authentication screen if not authenticated
   if (!user) {
     return (
@@ -107,14 +128,18 @@ export function App() {
           {authTab === 0 ? (
             <LoginForm />
           ) : (
-            <RegisterForm onSwitchToLogin={function() { setAuthTab(0); }} />
+            <RegisterForm 
+              onSwitchToLogin={() => setAuthTab(0)} 
+              isFirstRun={isFirstRun}
+            />
           )}
         </Box>
       </Container>
     );
   }
 
-  // Render main application with authenticated user
+  // Rest of the component remains the same
+  // ... existing code for authenticated view ...
   return (
     <div className="app-container">
       <AppBar position="static">

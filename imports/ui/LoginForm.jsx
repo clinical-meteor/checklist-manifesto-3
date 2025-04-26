@@ -17,8 +17,8 @@ import Divider from '@mui/material/Divider';
 
 export function LoginForm() {
   // Form state
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('password');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
@@ -234,12 +234,6 @@ export function LoginForm() {
               </Link>
             </Box>
           </Box>
-          
-          <Alert severity="info" sx={{ mt: 3 }}>
-            <Typography variant="body2">
-              Demo account: admin / password
-            </Typography>
-          </Alert>
         </CardContent>
       </Card>
     </Box>

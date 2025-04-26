@@ -3,6 +3,69 @@ import { Meteor } from 'meteor/meteor';
 import { Accounts } from 'meteor/accounts-base';
 import { get } from 'lodash';
 
+
+export async function checkFirstRun() {
+  try {
+    // Count users in the system
+    const userCount = await Meteor.users.countDocuments({});
+    const isFirstRun = userCount === 0;
+    
+    // Store the first-run status in settings for reference elsewhere
+    Meteor.settings.isFirstRun = isFirstRun;
+    
+    if (isFirstRun) {
+      console.log('First run detected - no users in the system.');
+    }
+    
+    return isFirstRun;
+  } catch (error) {
+    console.error('Error checking for first run:', error);
+    return false;
+  }
+}
+
+// Add a method to check if this is the first run (for client use)
+Meteor.methods({
+  'accounts.isFirstRun'() {
+    return !!get(Meteor.settings, 'isFirstRun', false);
+  },
+  
+  // Method to register the first user with admin privileges
+  async 'accounts.registerFirstUser'(options) {
+    check(options, {
+      username: String,
+      password: String,
+      email: Match.Maybe(String)
+    });
+    
+    // Only allow this if no users exist yet
+    const userCount = await Meteor.users.countDocuments({});
+    if (userCount > 0) {
+      throw new Meteor.Error('not-allowed', 'First user has already been registered');
+    }
+    
+    // Create the user options object without email if it's not provided
+    const userOptions = {
+      username: options.username,
+      password: options.password,
+      profile: { role: 'admin', isFirstUser: true }
+    };
+    
+    // Only add email if it's provided and not empty
+    if (options.email && options.email.trim() !== '') {
+      userOptions.email = options.email;
+    }
+    
+    // Create the first user with admin role
+    const userId = Accounts.createUser(userOptions);
+    
+    // Update first-run status in settings
+    Meteor.settings.isFirstRun = false;
+    
+    return userId;
+  }
+});
+
 // Configure account creation validation
 Accounts.config({
   sendVerificationEmail: false,

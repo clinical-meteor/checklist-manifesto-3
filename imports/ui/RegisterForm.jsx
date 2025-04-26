@@ -16,7 +16,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import Link from '@mui/material/Link';
 import Divider from '@mui/material/Divider';
 
-export function RegisterForm({ onSwitchToLogin }) {
+export function RegisterForm({ onSwitchToLogin, isFirstRun = false }) {
   // Form state
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -33,8 +33,8 @@ export function RegisterForm({ onSwitchToLogin }) {
     setError('');
     
     // Validate inputs
-    if (!username && !email) {
-      setError('Username or email is required');
+    if (!username) {
+      setError('Username is required');
       setIsSubmitting(false);
       return;
     }
@@ -51,31 +51,51 @@ export function RegisterForm({ onSwitchToLogin }) {
       return;
     }
     
-    // Create user object
-    const newUser = {
-      password,
-      profile: {}
-    };
-    
-    if (username) newUser.username = username;
-    if (email) newUser.email = email;
-    
-    // Use Meteor's built-in account creation
-    Accounts.createUser(newUser, function(err) {
-      setIsSubmitting(false);
+    // Use the appropriate registration method
+    if (isFirstRun) {
+      // Create user options for first-run registration
+      const userOptions = {
+        username,
+        password
+      };
       
-      if (err) {
-        console.error('Registration error:', err);
-        setError(get(err, 'reason', 'Registration failed. Please try again.'));
-      } else {
-        setSuccess(true);
-        // Auto-login happens automatically with Accounts.createUser
-        setTimeout(function() {
-          // Refresh the page to update UI
-          window.location.reload();
-        }, 1500);
+      // Only include email if it's provided and not empty
+      if (email && email.trim() !== '') {
+        userOptions.email = email;
       }
-    });
+      
+      // Use the special first-run registration method
+      Meteor.call('accounts.registerFirstUser', userOptions, handleRegistrationCallback);
+    } else {
+      // Create user object for regular registration
+      const newUser = {
+        password,
+        profile: {}
+      };
+      
+      if (username) newUser.username = username;
+      if (email && email.trim() !== '') newUser.email = email;
+      
+      // Regular user registration
+      Accounts.createUser(newUser, handleRegistrationCallback);
+    }
+  }
+  
+  // Handle registration callback
+  function handleRegistrationCallback(err) {
+    setIsSubmitting(false);
+    
+    if (err) {
+      console.error('Registration error:', err);
+      setError(get(err, 'reason', 'Registration failed. Please try again.'));
+    } else {
+      setSuccess(true);
+      // Auto-login happens automatically with Accounts.createUser
+      setTimeout(function() {
+        // Refresh the page to update UI
+        window.location.reload();
+      }, 1500);
+    }
   }
 
   // Handle switching to login
@@ -91,7 +111,7 @@ export function RegisterForm({ onSwitchToLogin }) {
       <Card sx={{ width: '100%', maxWidth: 500 }}>
         <CardContent sx={{ p: 4 }}>
           <Typography variant="h5" align="center" gutterBottom>
-            Create an Account
+            {isFirstRun ? 'Create Your Admin Account' : 'Create an Account'}
           </Typography>
           
           <Divider sx={{ mb: 3 }} />
@@ -117,6 +137,7 @@ export function RegisterForm({ onSwitchToLogin }) {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               margin="normal"
+              required
               disabled={isSubmitting || success}
             />
             
@@ -171,21 +192,23 @@ export function RegisterForm({ onSwitchToLogin }) {
             >
               {isSubmitting ? (
                 <CircularProgress size={24} color="inherit" />
-              ) : 'Register'}
+              ) : isFirstRun ? 'Create Admin Account' : 'Register'}
             </Button>
             
-            <Box sx={{ mt: 2, textAlign: 'center' }}>
-              <Typography variant="body2" color="text.secondary">
-                Already have an account?{' '}
-                <Link 
-                  href="#" 
-                  variant="body2" 
-                  onClick={switchToLogin}
-                >
-                  Sign in
-                </Link>
-              </Typography>
-            </Box>
+            {!isFirstRun && (
+              <Box sx={{ mt: 2, textAlign: 'center' }}>
+                <Typography variant="body2" color="text.secondary">
+                  Already have an account?{' '}
+                  <Link 
+                    href="#" 
+                    variant="body2" 
+                    onClick={switchToLogin}
+                  >
+                    Sign in
+                  </Link>
+                </Typography>
+              </Box>
+            )}
           </Box>
         </CardContent>
       </Card>

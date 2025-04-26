@@ -42,6 +42,16 @@ Meteor.methods({
         });
       }
 
+      // Add optional owner field (task assignee) if provided
+      if (options.assignedTo) {
+        // Verify the assigned user exists
+        const assignedUser = await Meteor.users.findOneAsync({ _id: options.assignedTo });
+        if (!assignedUser) {
+          throw new Meteor.Error('Invalid user', 'The assigned user does not exist.');
+        }
+        set(task, 'owner', options.assignedTo);
+      }
+
       // Other options handling...
 
       const taskId = await TasksCollection.insertAsync(task);
