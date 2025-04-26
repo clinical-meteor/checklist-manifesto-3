@@ -236,5 +236,91 @@ Meteor.methods({
     } catch (error) {
       throw new Meteor.Error('Error updating task', error.message);
     }
+  },
+
+  /**
+   * Import a Task resource
+   * @param {Object} taskResource - A FHIR Task resource
+   * @returns {String} The ID of the imported task
+   */
+  'tasks.import'(taskResource) {
+    // Make sure user is logged in
+    if (!this.userId) {
+      throw new Meteor.Error('Not authorized.', 'You must be logged in to import tasks.');
+    }
+
+    // Validate that it's a task resource
+    check(taskResource, {
+      resourceType: String,
+      status: Match.Maybe(String),
+      description: Match.Maybe(String),
+      priority: Match.Maybe(String),
+      executionPeriod: Match.Maybe(Object),
+      // Allow other fields without explicitly checking them
+      $sparse: true
+    });
+
+    // Verify it's a Task resource
+    if (taskResource.resourceType !== 'Task') {
+      throw new Meteor.Error('Invalid resource', 'Only Task resources can be imported.');
+    }
+
+    try {
+      // Prepare the task object for insertion
+      const task = {
+        // Required FHIR Task properties
+        resourceType: 'Task',
+        status: taskResource.status || 'requested',
+        
+        // Common Task properties
+        description: taskResource.description || 'Imported task',
+        priority: taskResource.priority || 'routine',
+        
+        // Metadata
+        authoredOn: taskResource.authoredOn ? new Date(taskResource.authoredOn) : new Date(),
+        lastModified: new Date(),
+        
+        // Ownership
+        requester: this.userId,
+        owner: taskResource.owner || this.userId,
+        
+        // Additional properties from the imported task
+        executionPeriod: {},
+        note: taskResource.note || []
+      };
+
+      // Handle dates in execution period
+      if (taskResource.executionPeriod) {
+        if (taskResource.executionPeriod.start) {
+          task.executionPeriod.start = new Date(taskResource.executionPeriod.start);
+        }
+        
+        if (taskResource.executionPeriod.end) {
+          task.executionPeriod.end = new Date(taskResource.executionPeriod.end);
+        }
+      }
+
+      // Use the provided ID if it exists, otherwise MongoDB will generate one
+      if (taskResource.id) {
+        task.id = taskResource.id;
+      }
+
+      // Handle existing task with same ID
+      const existingTask = taskResource.id ? 
+        TasksCollection.findOne({ id: taskResource.id }) : null;
+
+      if (existingTask) {
+        // Update existing task
+        const taskId = existingTask._id;
+        TasksCollection.update({ _id: taskId }, { $set: task });
+        return taskId;
+      } else {
+        // Insert new task
+        return TasksCollection.insert(task);
+      }
+    } catch (error) {
+      console.error('Error importing task:', error);
+      throw new Meteor.Error('import-failed', 'Failed to import task: ' + error.message);
+    }
   }
 });
