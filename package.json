@@ -5,7 +5,8 @@
     "start": "meteor run",
     "test": "meteor test --once --driver-package meteortesting:mocha",
     "test-app": "TEST_WATCH=1 meteor test --full-app --driver-package meteortesting:mocha",
-    "visualize": "meteor --production --extra-packages bundle-visualizer"
+    "visualize": "meteor --production --extra-packages bundle-visualizer",
+    "desktop": "node ../meteor-desktop/dist/bin/cli.js"
   },
   "dependencies": {
     "@accounts/client": "^0.33.1",
@@ -36,5 +37,15 @@
       "server": "server/main.js"
     },
     "testModule": "tests/main.js"
+  },
+  "devDependencies": {
+    "@babel/preset-env": "^7.26.9",
+    "@electron/notarize": "^3.0.1",
+    "@electron/osx-sign": "^2.0.0",
+    "@meteor-community/meteor-desktop": "file:../meteor-desktop",
+    "electron": "^17.4.11",
+    "electron-builder": "^24.6.4",
+    "electron-builder-squirrel-windows": "^26.0.11",
+    "electron-packager": "^17.1.2"
   }
 }

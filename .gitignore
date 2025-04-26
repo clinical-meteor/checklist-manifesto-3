@@ -21,3 +21,5 @@ settings.json
 .meteor/local
 .history
 .versions
+.desktop
+version.desktop

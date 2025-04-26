@@ -25,3 +25,7 @@ sha
 check
 email
 accounts-password
+
+
+communitypackages:meteor-desktop-watcher@=4.0.0-rc.1
+communitypackages:meteor-desktop-bundler@=4.0.0-rc.1
