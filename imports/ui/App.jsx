@@ -1,5 +1,5 @@
-// imports/ui/App.jsx
-import React, { useState, useEffect } from 'react';
+// imports/ui/App.jsx (modified version)
+import React, { useState } from 'react';
 import { Meteor } from 'meteor/meteor';
 import { useTracker } from 'meteor/react-meteor-data';
 import { get } from 'lodash';
@@ -30,19 +30,20 @@ import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import PriorityHighIcon from '@mui/icons-material/PriorityHigh';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import ImportExportIcon from '@mui/icons-material/ImportExport';
 
 // Import app components
 import { TaskForm } from './TaskForm';
 import { TaskList } from './TaskList';
 import { LoginForm } from './LoginForm';
 import { RegisterForm } from './RegisterForm';
-import { FirstRunSetup } from './FirstRunSetup';
+import { ImportExportDialog } from './ImportExportDialog';
 
 export function App() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [filter, setFilter] = useState('all');
   const [authTab, setAuthTab] = useState(0); // 0 for login, 1 for register
-  const [isFirstRun, setIsFirstRun] = useState(false);
+  const [importExportOpen, setImportExportOpen] = useState(false);
 
   // Track user authentication and loading states
   const { user, isLoading } = useTracker(function() {
@@ -54,20 +55,6 @@ export function App() {
       user: Meteor.user()
     };
   });
-
-  // Check if this is first run
-  useEffect(function() {
-    // Only check first run status if not logged in
-    if (!user) {
-      Meteor.call('accounts.isFirstRun', function(error, result) {
-        if (!error && result) {
-          setIsFirstRun(true);
-          // If first run, default to registration tab
-          setAuthTab(1);
-        }
-      });
-    }
-  }, [user]);
 
   // Handle drawer toggle
   function handleDrawerToggle() {
@@ -99,6 +86,16 @@ export function App() {
     setAuthTab(newValue);
   }
 
+  // Handle import/export dialog
+  function handleOpenImportExport() {
+    setImportExportOpen(true);
+    setDrawerOpen(false);
+  }
+
+  function handleCloseImportExport() {
+    setImportExportOpen(false);
+  }
+
   // Render loading state
   if (isLoading) {
     return (
@@ -106,11 +103,6 @@ export function App() {
         <CircularProgress />
       </Box>
     );
-  }
-
-  // Render first-run setup if needed
-  if (isFirstRun && !user) {
-    return <FirstRunSetup onComplete={() => setIsFirstRun(false)} />;
   }
 
   // Render authentication screen if not authenticated
@@ -128,18 +120,14 @@ export function App() {
           {authTab === 0 ? (
             <LoginForm />
           ) : (
-            <RegisterForm 
-              onSwitchToLogin={() => setAuthTab(0)} 
-              isFirstRun={isFirstRun}
-            />
+            <RegisterForm onSwitchToLogin={function() { setAuthTab(0); }} />
           )}
         </Box>
       </Container>
     );
   }
 
-  // Rest of the component remains the same
-  // ... existing code for authenticated view ...
+  // Render main application with authenticated user
   return (
     <div className="app-container">
       <AppBar position="static">
@@ -203,6 +191,13 @@ export function App() {
               <ListItemText primary="Due Soon" />
             </ListItem>
             <Divider />
+            <ListItem button onClick={handleOpenImportExport}>
+              <ListItemIcon>
+                <ImportExportIcon />
+              </ListItemIcon>
+              <ListItemText primary="Import/Export" />
+            </ListItem>
+            <Divider />
             <ListItem button onClick={handleLogout}>
               <ListItemIcon>
                 <ExitToAppIcon />
@@ -220,6 +215,12 @@ export function App() {
           <TaskList filter={filter} />
         </Box>
       </Container>
+
+      {/* Import/Export Dialog */}
+      <ImportExportDialog
+        open={importExportOpen}
+        onClose={handleCloseImportExport}
+      />
     </div>
   );
 }

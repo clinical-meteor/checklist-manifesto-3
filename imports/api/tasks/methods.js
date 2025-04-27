@@ -322,5 +322,103 @@ Meteor.methods({
       console.error('Error importing task:', error);
       throw new Meteor.Error('import-failed', 'Failed to import task: ' + error.message);
     }
+  },
+
+  async 'tasks.importMultiple'(tasksToImport) {
+    check(tasksToImport, [Object]);
+    
+    if (!this.userId) {
+      throw new Meteor.Error('not-authorized', 'You must be logged in to import tasks.');
+    }
+    
+    // Validate each task
+    tasksToImport.forEach(task => {
+      if (task.resourceType !== 'Task') {
+        throw new Meteor.Error('invalid-task', `Invalid resource type: ${task.resourceType}. Expected 'Task'.`);
+      }
+    });
+    
+    let importedCount = 0;
+    let errors = [];
+
+    try {
+      // Process each task
+      for (const taskData of tasksToImport) {
+        try {
+          // Prepare the task for import
+          const preparedTask = prepareTaskForImport(taskData, this.userId);
+          
+          // Insert the task
+          await TasksCollection.insertAsync(preparedTask);
+          
+          importedCount++;
+        } catch (error) {
+          errors.push({
+            description: get(taskData, 'description', 'Unknown task'),
+            error: error.message
+          });
+          console.error('Error importing task:', error);
+        }
+      }
+      
+      return {
+        imported: importedCount,
+        errors: errors.length > 0 ? errors : null,
+        total: tasksToImport.length
+      };
+    } catch (error) {
+      throw new Meteor.Error('import-failed', `Failed to import tasks: ${error.message}`);
+    }
   }
 });
+
+
+
+// Prepare a task for import
+function prepareTaskForImport(taskData, userId) {
+  // Create a new object to avoid modifying the original
+  const task = { ...taskData };
+  
+  // Set required fields
+  task.resourceType = 'Task';
+  
+  // Set default values if not present
+  if (!task.status) {
+    task.status = 'requested';
+  }
+  
+  // Convert FHIR references to IDs if needed
+  if (get(task, 'requester.reference')) {
+    const reference = get(task, 'requester.reference');
+    if (reference.startsWith('Practitioner/')) {
+      task.requester = reference.replace('Practitioner/', '');
+    }
+  }
+  
+  if (get(task, 'owner.reference')) {
+    const reference = get(task, 'owner.reference');
+    if (reference.startsWith('Practitioner/')) {
+      task.owner = reference.replace('Practitioner/', '');
+    }
+  }
+  
+  // Set the current user as requester if not specified
+  if (!task.requester) {
+    task.requester = userId;
+  }
+  
+  // Set dates if not present
+  if (!task.authoredOn) {
+    task.authoredOn = new Date();
+  }
+  
+  task.lastModified = new Date();
+  
+  // Set isDeleted flag to false
+  task.isDeleted = false;
+  
+  // Remove any _id field to avoid conflicts
+  delete task._id;
+  
+  return task;
+}
