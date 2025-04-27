@@ -1,36 +1,17 @@
 // imports/ui/pages/TaskListPage.jsx
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Box, Container, Grid, Typography, Paper } from '@mui/material';
+import { Meteor } from 'meteor/meteor';
+import { useTracker } from 'meteor/react-meteor-data';
+import { Box, Container, Typography } from '@mui/material';
 
-// Create simple placeholder components for now
-// These will be replaced with your actual components
-const TaskForm = () => (
-  <Paper sx={{ p: 3, mb: 3 }}>
-    <Typography variant="h6" gutterBottom>Add New Task</Typography>
-    <Typography variant="body2" color="text.secondary">
-      Task form component will be implemented here
-    </Typography>
-  </Paper>
-);
+// Import collections
+import { TasksCollection } from '../../db/TasksCollection';
 
-const TaskFilter = ({ filter, onFilterChange, sort, onSortChange }) => (
-  <Paper sx={{ p: 3, mb: 3 }}>
-    <Typography variant="h6" gutterBottom>Task Filters</Typography>
-    <Typography variant="body2" color="text.secondary">
-      Filter: {filter}, Sort: {sort}
-    </Typography>
-  </Paper>
-);
-
-const TaskList = ({ filter, sort }) => (
-  <Paper sx={{ p: 3 }}>
-    <Typography variant="h6" gutterBottom>Task List</Typography>
-    <Typography variant="body2" color="text.secondary">
-      Displaying tasks with filter: {filter} and sort: {sort}
-    </Typography>
-  </Paper>
-);
+// Import actual components
+import TaskForm from '../components/TaskForm';
+import { TaskList } from '../components/TaskList';
+import { TaskFilter } from '../components/TaskFilter';
 
 /**
  * Task list page that displays a list of tasks with filtering options
@@ -44,12 +25,47 @@ export default function TaskListPage() {
   const [filter, setFilter] = useState(urlFilter || 'all');
   const [sort, setSort] = useState('lastModified');
   
+  // Track task counts for filters
+  const { taskCounts } = useTracker(function() {
+    // Subscribe to tasks
+    Meteor.subscribe('tasks.mine');
+    
+    // Count tasks for each filter
+    const all = TasksCollection.find({ isDeleted: { $ne: true } }).count();
+    const active = TasksCollection.find({ 
+      status: { $nin: ['completed', 'cancelled', 'entered-in-error'] },
+      isDeleted: { $ne: true }
+    }).count();
+    const completed = TasksCollection.find({ 
+      status: 'completed', 
+      isDeleted: { $ne: true } 
+    }).count();
+    
+    // Count due soon tasks
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() + 7);
+    const dueSoon = TasksCollection.find({
+      'executionPeriod.end': { $lte: cutoffDate, $gte: new Date() },
+      status: { $nin: ['completed', 'cancelled', 'entered-in-error'] },
+      isDeleted: { $ne: true }
+    }).count();
+    
+    return {
+      taskCounts: {
+        all,
+        active,
+        completed,
+        dueSoon
+      }
+    };
+  });
+  
   // Event handlers
-  const handleFilterChange = (newFilter) => {
+  const handleFilterChange = function(newFilter) {
     setFilter(newFilter);
   };
   
-  const handleSortChange = (newSort) => {
+  const handleSortChange = function(newSort) {
     setSort(newSort);
   };
   
@@ -64,24 +80,23 @@ export default function TaskListPage() {
         </Typography>
       </Box>
       
-      <Grid container spacing={3}>
-        <Grid item xs={12}>
-          <TaskForm />
-        </Grid>
-        
-        <Grid item xs={12}>
-          <TaskFilter 
-            filter={filter} 
-            onFilterChange={handleFilterChange}
-            sort={sort}
-            onSortChange={handleSortChange}
-          />
-        </Grid>
-        
-        <Grid item xs={12}>
-          <TaskList filter={filter} sort={sort} />
-        </Grid>
-      </Grid>
+      <Box sx={{ mb: 3 }}>
+        <TaskForm />
+      </Box>
+      
+      <Box sx={{ mb: 3 }}>
+        <TaskFilter 
+          filter={filter} 
+          onFilterChange={handleFilterChange}
+          sort={sort}
+          onSortChange={handleSortChange}
+          taskCounts={taskCounts}
+        />
+      </Box>
+      
+      <Box>
+        <TaskList filter={filter} />
+      </Box>
     </Container>
   );
 }
