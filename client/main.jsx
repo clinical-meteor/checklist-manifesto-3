@@ -3,6 +3,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { Meteor } from 'meteor/meteor';
 import { Session } from 'meteor/session';
+import { useTracker } from 'meteor/react-meteor-data'; // Added missing import
 import { App } from '/imports/ui/App';
 
 // Import accounts config
@@ -17,6 +18,7 @@ import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
 // Create theme based on Session value
 const createAppTheme = (mode) => createTheme({
   palette: {
+    mode, // Use light/dark mode
     primary: {
       main: '#315481',
     },
@@ -27,7 +29,8 @@ const createAppTheme = (mode) => createTheme({
       main: '#ff3046',
     },
     background: {
-      default: '#f5f5f5',
+      default: mode === 'light' ? '#f5f5f5' : '#303030',
+      paper: mode === 'light' ? '#ffffff' : '#424242',
     },
   },
   typography: {
@@ -50,10 +53,9 @@ Meteor.startup(() => {
     return (
       <ThemeProvider theme={appTheme}>
         <CssBaseline />
-          <LocalizationProvider dateAdapter={AdapterMoment}>
-            <App />
-          </LocalizationProvider>
-        <App />
+        <LocalizationProvider dateAdapter={AdapterMoment}>
+          <App />
+        </LocalizationProvider>
       </ThemeProvider>
     );
   };

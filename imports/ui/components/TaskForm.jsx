@@ -1,47 +1,52 @@
-// imports/ui/TaskForm.jsx
+// imports/ui/components/TaskForm.jsx
 import React, { useState } from 'react';
+import { Meteor } from 'meteor/meteor';
 import { get } from 'lodash';
 import moment from 'moment';
 
 // Material UI components
-import Box from '@mui/material/Box';
-import Paper from '@mui/material/Paper';
-import TextField from '@mui/material/TextField';
-import Button from '@mui/material/Button';
-import FormControl from '@mui/material/FormControl';
-import InputLabel from '@mui/material/InputLabel';
-import Select from '@mui/material/Select';
-import MenuItem from '@mui/material/MenuItem';
-import Grid from '@mui/material/Grid';
-import Typography from '@mui/material/Typography';
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
-import CardActions from '@mui/material/CardActions';
-import Collapse from '@mui/material/Collapse';
-import IconButton from '@mui/material/IconButton';
-import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { 
+  Box, 
+  Card, 
+  CardContent, 
+  CardActions, 
+  TextField, 
+  Button, 
+  FormControl, 
+  InputLabel, 
+  Select, 
+  MenuItem, 
+  Grid, 
+  Typography, 
+  Collapse, 
+  IconButton, 
+  CircularProgress 
+} from '@mui/material';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 
 // Icons
 import AddIcon from '@mui/icons-material/Add';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
-export function TaskForm() {
+export default function TaskForm() {
   // Form state
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState('routine');
   const [dueDate, setDueDate] = useState(null);
   const [expanded, setExpanded] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
-  // Handle form submission - simulated for demo
+  // Handle form submission
   function handleSubmit(event) {
     event.preventDefault();
     
     if (!description) return;
     
     setIsSubmitting(true);
+    setError('');
     
     // Create the options object with proper date handling
     const options = {
@@ -59,7 +64,7 @@ export function TaskForm() {
       
       if (error) {
         console.error('Error creating task:', error);
-        alert(`Failed to create task: ${error.message}`);
+        setError(get(error, 'reason', 'Failed to create task. Please try again.'));
       } else {
         // Reset form on success
         setDescription('');
@@ -83,6 +88,12 @@ export function TaskForm() {
             Create New Task
           </Typography>
           
+          {error && (
+            <Typography color="error" variant="body2" sx={{ mb: 2 }}>
+              {error}
+            </Typography>
+          )}
+          
           <TextField
             label="Task Description"
             variant="outlined"
@@ -92,6 +103,7 @@ export function TaskForm() {
             required
             disabled={isSubmitting}
             margin="normal"
+            id="newTaskInput"
           />
           
           <Box sx={{ 
@@ -144,9 +156,9 @@ export function TaskForm() {
                     label="Due Date"
                     value={dueDate}
                     onChange={setDueDate}
-                    renderInput={(params) => <TextField {...params} fullWidth />}
+                    slotProps={{ textField: { fullWidth: true } }}
                     disabled={isSubmitting}
-                    minDate={moment()}
+                    minDateTime={moment()}
                   />
                 </LocalizationProvider>
               </Grid>
@@ -157,9 +169,10 @@ export function TaskForm() {
         <CardActions sx={{ justifyContent: 'flex-end', p: 2 }}>
           <Button
             variant="contained"
-            startIcon={<AddIcon />}
+            startIcon={isSubmitting ? <CircularProgress size={20} color="inherit" /> : <AddIcon />}
             type="submit"
             disabled={!description || isSubmitting}
+            id="newItemAddIcon"
           >
             {isSubmitting ? 'Creating...' : 'Add Task'}
           </Button>

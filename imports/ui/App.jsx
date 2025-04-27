@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+// imports/ui/App.jsx
+import React, { useState } from 'react';
 import { Meteor } from 'meteor/meteor';
 import { useTracker } from 'meteor/react-meteor-data';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
@@ -22,22 +23,32 @@ export function App() {
     const userSub = Meteor.subscribe('userData');
     
     // Check if this is the first run (no users exist)
-    const checkFirstRun = new ReactiveVar(false);
+    let firstRunCheck = false;
+    
     Meteor.call('accounts.isFirstRun', (err, result) => {
       if (!err) {
-        checkFirstRun.set(result);
+        firstRunCheck = result;
       }
     });
     
     return {
       user: Meteor.user(),
       userLoading: !userSub.ready(),
-      isFirstRun: checkFirstRun.get()
+      isFirstRun: firstRunCheck
     };
   });
 
   if (userLoading) {
-    return <div>Loading...</div>;
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh' 
+      }}>
+        <div>Loading...</div>
+      </div>
+    );
   }
 
   // If this is the first run, show the setup page
@@ -56,7 +67,7 @@ export function App() {
         
         {/* Main app routes (protected) */}
         <Route element={<MainLayout />}>
-          <Route path="/" element={user ? <TaskListPage filter="all" /> : <Navigate to="/login" replace />} />
+          <Route path="/" element={user ? <TaskListPage /> : <Navigate to="/login" replace />} />
           <Route path="/tasks/:filter" element={user ? <TaskListPage /> : <Navigate to="/login" replace />} />
           <Route path="/task/:taskId" element={user ? <TaskDetailsPage /> : <Navigate to="/login" replace />} />
           <Route path="/protocols" element={<ProtocolLibraryPage />} />
@@ -67,5 +78,3 @@ export function App() {
     </Router>
   );
 }
-
-export default App;
