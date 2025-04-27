@@ -92,3 +92,26 @@ Meteor.publish('tasks.dueSoon', function(daysAhead = 7) {
     sort: { 'executionPeriod.end': 1 }
   });
 });
+
+Meteor.publish('tasks.protocols', function() {
+  if (!this.userId) {
+    // For unauthenticated users, only show public protocols
+    return TasksCollection.find({
+      public: true,
+      isDeleted: { $ne: true }
+    }, {
+      sort: { lastModified: -1 }
+    });
+  }
+  
+  // For authenticated users, show both public protocols and their own
+  return TasksCollection.find({
+    $or: [
+      { public: true },
+      { requester: this.userId }
+    ],
+    isDeleted: { $ne: true }
+  }, {
+    sort: { lastModified: -1 }
+  });
+});

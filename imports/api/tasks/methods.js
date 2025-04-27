@@ -369,6 +369,96 @@ Meteor.methods({
     } catch (error) {
       throw new Meteor.Error('import-failed', `Failed to import tasks: ${error.message}`);
     }
+  },
+  'tasks.clone': function(taskId) {
+    check(taskId, String);
+    
+    // Must be logged in to clone
+    if (!this.userId) {
+      throw new Meteor.Error('not-authorized', 'You must be logged in to clone tasks.');
+    }
+    
+    try {
+      // Find the original task
+      const originalTask = TasksCollection.findOne(taskId);
+      
+      if (!originalTask) {
+        throw new Meteor.Error('not-found', 'Protocol not found.');
+      }
+      
+      // Create a new task based on the original
+      const newTask = {
+        resourceType: 'Task',
+        status: 'draft',  // Always start as draft
+        description: originalTask.description,
+        priority: originalTask.priority || 'routine',
+        authoredOn: new Date(),
+        lastModified: new Date(),
+        requester: this.userId,
+        isDeleted: false,
+        public: false,  // Always start as private
+        clonedFrom: taskId  // Store original source
+      };
+      
+      // Copy any notes if present
+      if (get(originalTask, 'note')) {
+        newTask.note = [{
+          text: `Cloned from protocol: ${originalTask.description}`,
+          time: new Date(),
+          authorId: this.userId
+        }];
+      }
+      
+      // Copy execution period if present
+      if (get(originalTask, 'executionPeriod')) {
+        newTask.executionPeriod = {};
+        
+        if (get(originalTask, 'executionPeriod.start')) {
+          newTask.executionPeriod.start = new Date();
+        }
+        
+        if (get(originalTask, 'executionPeriod.end')) {
+          // Set due date a week from now by default
+          const dueDate = new Date();
+          dueDate.setDate(dueDate.getDate() + 7);
+          newTask.executionPeriod.end = dueDate;
+        }
+      }
+      
+      // Insert the new task
+      const taskId = TasksCollection.insert(newTask);
+      return taskId;
+    } catch (error) {
+      throw new Meteor.Error('clone-failed', `Failed to clone protocol: ${error.message}`);
+    }
+  },
+
+  // Toggle a task's public status (make it available in protocol library)
+  'tasks.togglePublic': function(taskId, makePublic) {
+    check(taskId, String);
+    check(makePublic, Boolean);
+    
+    if (!this.userId) {
+      throw new Meteor.Error('not-authorized', 'You must be logged in.');
+    }
+    
+    const task = TasksCollection.findOne(taskId);
+    
+    if (!task) {
+      throw new Meteor.Error('not-found', 'Task not found.');
+    }
+    
+    // Only the creator can make a task public/private
+    if (task.requester !== this.userId) {
+      throw new Meteor.Error('not-authorized', 'Only the creator can change a task\'s visibility.');
+    }
+    
+    return TasksCollection.update(taskId, {
+      $set: { 
+        public: makePublic,
+        lastModified: new Date()
+      }
+    });
   }
 });
 

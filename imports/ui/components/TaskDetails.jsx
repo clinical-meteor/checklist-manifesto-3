@@ -1,5 +1,5 @@
 // imports/ui/TaskDetails.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Meteor } from 'meteor/meteor';
 import { useTracker } from 'meteor/react-meteor-data';
 import { get, set } from 'lodash';
@@ -52,6 +52,14 @@ export function TaskDetails({ taskId, open, onClose }) {
   const [dueDate, setDueDate] = useState(null);
   const [noteText, setNoteText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPublic, setIsPublic] = useState(false);
+
+
+  useEffect(() => {
+    if (task) {
+      setIsPublic(!!task.public);
+    }
+  }, [task]);
 
   // Fetch task data
   const { task, isLoading, currentUser } = useTracker(function() {
@@ -91,6 +99,24 @@ export function TaskDetails({ taskId, open, onClose }) {
     setIsEditing(false);
     setNoteText('');
     onClose();
+  }
+
+  async function handleTogglePublic() {
+    try {
+      await new Promise((resolve, reject) => {
+        Meteor.call('tasks.togglePublic', taskId, !isPublic, (err, result) => {
+          if (err) {
+            reject(err);
+          } else {
+            setIsPublic(!isPublic);
+            resolve(result);
+          }
+        });
+      });
+    } catch (error) {
+      console.error('Error toggling protocol visibility:', error);
+      alert(`Failed to update: ${error.message}`);
+    }
   }
 
   // Start editing mode
@@ -264,6 +290,16 @@ export function TaskDetails({ taskId, open, onClose }) {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose}>Close</Button>
+          {canEditTask() && (
+            <Button
+              color={isPublic ? "primary" : "default"}
+              startIcon={<PublicIcon />}
+              onClick={handleTogglePublic}
+              sx={{ mr: 1 }}
+            >
+              {isPublic ? "Public Protocol" : "Make Public"}
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
     );
