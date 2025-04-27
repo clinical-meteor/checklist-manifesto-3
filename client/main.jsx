@@ -4,17 +4,17 @@ import { createRoot } from 'react-dom/client';
 import { Meteor } from 'meteor/meteor';
 import { App } from '/imports/ui/App';
 
-// Import accounts-js client configuration
+// Import accounts config
 import '/imports/startup/client/accounts-config';
 
-// Import Material-UI theme provider and base styles
+// Material UI theming
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
 
-// Create a theme instance
-const theme = createTheme({
+// Create theme based on Session value
+const createAppTheme = (mode) => createTheme({
   palette: {
     primary: {
       main: '#315481',
@@ -31,23 +31,31 @@ const theme = createTheme({
   },
   typography: {
     fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-  },
+  }
 });
 
-Meteor.startup(function() {
-  // Find the target DOM node
+Meteor.startup(() => {
   const container = document.getElementById('react-target');
-  
-  // Create a root
   const root = createRoot(container);
   
-  // Initial render
-  root.render(
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <LocalizationProvider dateAdapter={AdapterMoment}>
+  // Initialize session values
+  Session.setDefault('theme', 'light');
+  
+  // Create a reactive wrapper component to handle theme changes
+  const AppWithTheme = () => {
+    const theme = useTracker(() => Session.get('theme') || 'light');
+    const appTheme = createAppTheme(theme);
+    
+    return (
+      <ThemeProvider theme={appTheme}>
+        <CssBaseline />
+          <LocalizationProvider dateAdapter={AdapterMoment}>
+            <App />
+          </LocalizationProvider>
         <App />
-      </LocalizationProvider>
-    </ThemeProvider>
-  );
+      </ThemeProvider>
+    );
+  };
+  
+  root.render(<AppWithTheme />);
 });
