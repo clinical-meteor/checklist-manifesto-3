@@ -81,18 +81,7 @@ export default function SideDrawer({ open, onClose, user }) {
       
       {/* Main Navigation */}
       <List>
-        <ListItem disablePadding>
-          <ListItemButton
-            selected={isActive('/')}
-            onClick={() => handleNavigate('/')}
-            id="homeLink"
-          >
-            <ListItemIcon>
-              <HomeIcon />
-            </ListItemIcon>
-            <ListItemText primary="Home" />
-          </ListItemButton>
-        </ListItem>
+
         
         {/* Add Lists link */}
         <ListItem disablePadding>
@@ -107,8 +96,23 @@ export default function SideDrawer({ open, onClose, user }) {
             <ListItemText primary="My Lists" />
           </ListItemButton>
         </ListItem>
+
+        
         
         {/* Task Filters */}
+
+        <ListItem disablePadding>
+          <ListItemButton
+            selected={isActive('/') || isActive('/tasks/all')}
+            onClick={() => handleNavigate('/tasks/all')}
+            id="homeLink"
+          >
+            <ListItemIcon>
+              <HomeIcon />
+            </ListItemIcon>
+            <ListItemText primary="All Tasks" />
+          </ListItemButton>
+        </ListItem>
         <ListItem disablePadding>
           <ListItemButton
             selected={isActive('/tasks/active')}

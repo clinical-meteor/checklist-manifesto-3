@@ -59,20 +59,26 @@ Meteor.publish('lists.all', function() {
 Meteor.publish('lists.byId', function(listId) {
   check(listId, String);
   
+  console.log(`Publishing list with ID: ${listId}`);
+  
   // Find the list
-  const list = ListsCollection.findOne({
+  const list = ListsCollection.findOneAsync({
     _id: listId,
     isDeleted: { $ne: true }
   });
   
   if (!list) {
+    console.log(`List not found with ID: ${listId}`);
     return this.ready();
   }
   
   // If list is private, check if current user is the owner
   if (!list.public && (!this.userId || list.userId !== this.userId)) {
+    console.log(`Access denied to private list ${listId} for user ${this.userId || 'anonymous'}`);
     return this.ready();
   }
+  
+  console.log(`Publishing list "${list.title || list.name}" to user ${this.userId || 'anonymous'}`);
   
   return ListsCollection.find({
     _id: listId,

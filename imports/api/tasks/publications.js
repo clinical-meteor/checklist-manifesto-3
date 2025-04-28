@@ -1,6 +1,7 @@
 // imports/api/tasks/publications.js
 import { Meteor } from 'meteor/meteor';
 import { TasksCollection } from '../../db/TasksCollection';
+import { ListsCollection } from '../../db/ListsCollection';
 
 // Publish tasks that belong to the current user as either requester or owner
 Meteor.publish('tasks.mine', function() {
@@ -121,18 +122,27 @@ Meteor.publish('tasks.protocols', function() {
 Meteor.publish('tasks.byList', function(listId) {
   check(listId, String);
   
-  // Find the list to determine if it's public
-  const list = ListsCollection.findOne(listId);
-  
+  console.log(`Finding tasks for list: ${listId}`);
+
+  // First check if the list exists and user has access
+  const list = ListsCollection.findOneAsync({
+    _id: listId,
+    isDeleted: { $ne: true }
+  });
+
   if (!list) {
+    console.log(`List not found with ID: ${listId}`);
     return this.ready();
   }
-  
-  // If list is private, check if current user is the owner
+
+  // Check permissions - only allow access if list is public or user is the owner
   if (!list.public && (!this.userId || list.userId !== this.userId)) {
+    console.log(`Access denied to tasks for list ${listId}`);
     return this.ready();
   }
-  
+
+  // Return tasks for this list
+  console.log(`Publishing tasks for list: ${listId}`);
   return TasksCollection.find({
     listId: listId,
     isDeleted: { $ne: true }

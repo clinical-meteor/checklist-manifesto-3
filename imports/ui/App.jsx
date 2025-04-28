@@ -69,9 +69,8 @@ export function App() {
         
         {/* Main app routes (protected) */}
         <Route element={<MainLayout />}>
-          <Route path="/" element={user ? <TaskListPage /> : <Navigate to="/login" replace />} />
-          <Route path="/tasks/:filter" element={user ? <TaskListPage /> : <Navigate to="/login" replace />} />
-          <Route path="/task/:taskId" element={user ? <TaskDetailsPage /> : <Navigate to="/login" replace />} />
+        <Route path="/" element={user ? <Navigate to="/tasks/all" replace /> : <Navigate to="/login" replace />} />
+        <Route path="/tasks/:filter" element={user ? <TaskListPage /> : <Navigate to="/login" replace />} />          <Route path="/task/:taskId" element={user ? <TaskDetailsPage /> : <Navigate to="/login" replace />} />
           <Route path="/protocols" element={<ProtocolLibraryPage />} />
           <Route path="/import-export" element={user ? <ImportExportPage /> : <Navigate to="/login" replace />} />
           <Route path="/protocols" element={<ProtocolLibraryPage />} />

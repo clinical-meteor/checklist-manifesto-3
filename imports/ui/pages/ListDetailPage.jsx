@@ -46,7 +46,7 @@ import PriorityHighIcon from '@mui/icons-material/PriorityHigh';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 
 // Components
-import { TaskForm } from '../components/TaskForm';
+import TaskForm from '../components/TaskForm';
 import { ListConfigModal } from '../components/ListConfigModal';
 
 // Collections
@@ -89,26 +89,67 @@ export function ListDetailPage() {
       return { ...noData, isLoading: false };
     }
     
-    const listSub = Meteor.subscribe('lists.byId', listId);
-    const tasksSub = Meteor.subscribe('tasks.byList', listId);
-    const userSub = Meteor.subscribe('userData');
+    console.log('Subscribing to list:', listId);
     
-    if (!listSub.ready() || !tasksSub.ready() || !userSub.ready()) {
+    const listSub = Meteor.subscribe('lists.byId', listId);
+    const userSub = Meteor.subscribe('userData');
+    let tasksSub = { ready: () => false };
+    
+    // Log subscription readiness
+    console.log('List subscription ready:', listSub.ready());
+    
+    // Check if ListsCollection is defined
+    if (!ListsCollection) {
+      console.error('ListsCollection is not defined');
       return noData;
     }
     
+    // Log the result of ListsCollection.findOne before the ready check
+    const prelimList = ListsCollection.findOne(listId);
+    console.log('Preliminary list data:', prelimList);
+    
+    // Wait for all subscriptions to be ready
+    if (!listSub.ready() || !userSub.ready()) {
+      return noData;
+    }
+    
+    // Find the list 
     const listData = ListsCollection.findOne(listId);
+    console.log('List data after subscriptions ready:', listData);
     
     if (!listData) {
+      console.log('List not found:', listId);
       return { ...noData, isLoading: false };
+    }
+    
+    // Now that we know the list exists, subscribe to its tasks
+    try {
+      tasksSub = Meteor.subscribe('tasks.byList', listId);
+      console.log('Tasks subscription ready:', tasksSub.ready());
+    } catch (error) {
+      console.error('Error subscribing to tasks:', error);
+    }
+    
+    // If tasks subscription is not ready, show loading
+    if (!tasksSub.ready()) {
+      return { list: listData, tasks: [], isLoading: true, currentUser: Meteor.user() };
+    }
+    
+    // Fetch tasks with error handling
+    let tasksList = [];
+    try {
+      tasksList = TasksCollection.find(
+        { listId: listId, isDeleted: { $ne: true } },
+        { sort: { status: 1, ordinal: 1 } }
+      ).fetch();
+      console.log(`Found ${tasksList.length} tasks for list ${listId}`);
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
     }
     
     return {
       list: listData,
-      tasks: TasksCollection.find(
-        { listId: listId, isDeleted: { $ne: true } },
-        { sort: { status: 1, ordinal: 1 } }
-      ).fetch(),
+      tasks: tasksList,
       isLoading: false,
       currentUser: Meteor.user()
     };
@@ -137,9 +178,6 @@ export function ListDetailPage() {
       message: 'Task created successfully!',
       severity: 'success'
     });
-    
-    // Could auto-navigate to the task detail if desired
-    // navigate(`/task/${taskId}`);
   }
   
   // Open task menu
@@ -357,7 +395,7 @@ export function ListDetailPage() {
         <Box sx={{ p: 2, borderBottom: '1px solid #eee' }}>
           <Typography variant="h6">
             Tasks
-            {tasks.length > 0 && (
+            {tasks && tasks.length > 0 && (
               <Chip 
                 label={tasks.length} 
                 size="small" 
@@ -368,7 +406,7 @@ export function ListDetailPage() {
         </Box>
         
         <div id="taskList" className="content-scrollable list-items">
-          {tasks.length > 0 ? (
+          {tasks && tasks.length > 0 ? (
             <List>
               {tasks.map((task) => (
                 <React.Fragment key={task._id}>

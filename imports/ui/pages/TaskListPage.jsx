@@ -25,6 +25,9 @@ export default function TaskListPage() {
   useEffect(() => {
     if (urlFilter) {
       setFilter(urlFilter);
+    } else {
+      // Default to 'all' when on the root path
+      setFilter('all');
     }
   }, [urlFilter]);
   
