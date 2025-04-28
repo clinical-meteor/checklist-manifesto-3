@@ -118,26 +118,37 @@ export default function FirstRunSetupPage() {
 
   // Create initial sample data
   const createInitialData = () => {
+    setIsSubmitting(true);
+    
     // Create sample lists if selected
     if (createSampleLists) {
-      Meteor.call('lists.createSampleData', (error) => {
+      console.log('Creating sample lists...');
+      Meteor.call('lists.createSampleData', (error, result) => {
         if (error) {
           console.error('Error creating sample lists:', error);
         } else {
-          console.log('Sample lists created successfully');
+          console.log('Sample lists created successfully:', result);
         }
       });
     }
     
     // Create sample protocols if selected
     if (createSampleProtocols) {
-      Meteor.call('protocols.createSampleData', (error) => {
+      console.log('Creating sample protocols...');
+      Meteor.call('protocols.createSampleData', (error, result) => {
         if (error) {
           console.error('Error creating sample protocols:', error);
+          // Don't set isSubmitting to false yet, wait for all operations to complete
         } else {
-          console.log('Sample protocols created successfully');
+          console.log('Sample protocols created successfully:', result);
         }
+        
+        // Set submitting to false after all operations are completed
+        setIsSubmitting(false);
       });
+    } else {
+      // If not creating protocols, set submitting to false here
+      setIsSubmitting(false);
     }
   };
 
@@ -296,7 +307,7 @@ export default function FirstRunSetupPage() {
                 />
                   
                 {createSampleData && (
-                  <Box sx={{ ml: 4, mt: 2 }}>
+                  <div>
                     <FormControlLabel
                       control={
                         <Checkbox
@@ -306,7 +317,7 @@ export default function FirstRunSetupPage() {
                         />
                       }
                       label="Create sample task lists"
-                    />
+                    /><br />
                     <FormControlLabel
                       control={
                         <Checkbox
@@ -315,9 +326,9 @@ export default function FirstRunSetupPage() {
                           disabled={isSubmitting || !createSampleData}
                         />
                       }
-                      label="Create sample protocol templates"
+                      label="Create sample clinical protocols"
                     />
-                  </Box>
+                  </div>
                 )}
               </Box>
     

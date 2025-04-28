@@ -401,7 +401,6 @@ export function TaskDataExporter(props) {
         <Tabs
           value={tabIndex}
           onChange={handleTabChange}
-          variant="fullWidth"
           aria-label="Import/Export tabs"
         >
           <Tab 

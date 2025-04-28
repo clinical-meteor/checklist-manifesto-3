@@ -1,9 +1,9 @@
-// imports/ui/TaskList.jsx
-import React, { useState } from 'react';
+// imports/ui/components/TaskList.jsx - With DOM nesting fixes
+import React from 'react';
 import { Meteor } from 'meteor/meteor';
 import { useTracker } from 'meteor/react-meteor-data';
 import { get } from 'lodash';
-import { TasksCollection, isTaskCompleted, formatTaskDate } from '/imports/db/TasksCollection';
+import { TasksCollection } from '/imports/db/TasksCollection';
 import moment from 'moment';
 
 // Material UI components
@@ -143,7 +143,17 @@ export function TaskList({ filter }) {
   return (
     <Paper>
       <Box sx={{ p: 2, borderBottom: '1px solid #eee' }}>
-        <Typography variant="h6">{filterTitle}</Typography>
+        {/* FIX: Changed Typography component to div and used span for text content */}
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Typography variant="h6" component="span">
+            {filterTitle}
+          </Typography>
+          <Chip 
+            label={tasks.length} 
+            size="small" 
+            sx={{ ml: 1 }} 
+          />
+        </Box>
       </Box>
       <List>
         {tasks.map((task) => (
@@ -169,9 +179,12 @@ export function TaskList({ filter }) {
                 />
               </ListItemIcon>
               <ListItemText
-                primary={task.description}
+                primary={
+                  <Typography component="span">{task.description}</Typography>
+                }
                 secondary={
                   <React.Fragment>
+                    {/* FIX: Use Box component instead of Fragment for secondary content */}
                     <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1, mt: 1 }}>
                       <Chip 
                         size="small" 

@@ -1,50 +1,57 @@
-// imports/ui/FirstRunSetup.jsx
+// imports/ui/pages/FirstRunSetupPage.jsx
 import React, { useState } from 'react';
 import { Meteor } from 'meteor/meteor';
+import { 
+  Box, 
+  Container, 
+  Paper,
+  Typography,
+  Stepper,
+  Step,
+  StepLabel,
+  Button,
+  TextField,
+  Alert,
+  CircularProgress,
+  FormControlLabel,
+  Checkbox,
+  Divider
+} from '@mui/material';
 import { get } from 'lodash';
 
-// Material UI components
-import Box from '@mui/material/Box';
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
-import TextField from '@mui/material/TextField';
-import Button from '@mui/material/Button';
-import Typography from '@mui/material/Typography';
-import Alert from '@mui/material/Alert';
-import CircularProgress from '@mui/material/CircularProgress';
-import Stepper from '@mui/material/Stepper';
-import Step from '@mui/material/Step';
-import StepLabel from '@mui/material/StepLabel';
-import Container from '@mui/material/Container';
-import Paper from '@mui/material/Paper';
-
-export function FirstRunSetup({ onComplete }) {
-  // Form state
+export default function FirstRunSetupPage() {
+  // State
   const [activeStep, setActiveStep] = useState(0);
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [createSampleData, setCreateSampleData] = useState(true);
+  const [createPersonalLists, setCreatePersonalLists] = useState(true);
+  const [createClinicalProtocols, setCreateClinicalProtocols] = useState(true);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Steps for the setup
+  // Steps for the setup wizard
   const steps = [
     'Welcome',
     'Create Admin Account',
+    'Sample Data',
     'Complete'
   ];
 
-  function handleNext() {
+  // Navigate to next step
+  const handleNext = () => {
     setActiveStep((prevStep) => prevStep + 1);
-  }
+  };
 
-  function handleBack() {
+  // Navigate to previous step
+  const handleBack = () => {
     setActiveStep((prevStep) => prevStep - 1);
-  }
+  };
 
   // Handle first user registration
-  function handleRegisterFirstUser() {
+  const handleRegisterFirstUser = () => {
     setIsSubmitting(true);
     setError('');
     
@@ -67,10 +74,15 @@ export function FirstRunSetup({ onComplete }) {
       return;
     }
     
-    // Create user options, only including email if it's not empty
+    // Create user options
     const userOptions = {
       username,
-      password
+      password,
+      profile: {
+        sampleData: createSampleData,
+        personalLists: createPersonalLists,
+        clinicalProtocols: createClinicalProtocols
+      }
     };
     
     // Only include email if it's provided and not empty
@@ -86,7 +98,7 @@ export function FirstRunSetup({ onComplete }) {
         console.error('Registration error:', err);
         setError(get(err, 'reason', 'Registration failed. Please try again.'));
       } else {
-        // Registration successful, proceed to next step
+        // Registration successful, proceed to sample data step
         handleNext();
         
         // Auto-login with the new account
@@ -94,19 +106,60 @@ export function FirstRunSetup({ onComplete }) {
           if (loginErr) {
             console.error('Auto-login error:', loginErr);
           } else {
-            // After short delay, complete setup
-            setTimeout(function() {
-              if (onComplete) onComplete();
-              window.location.reload();
-            }, 2000);
+            // Create sample data if selected
+            if (createSampleData) {
+              createInitialData();
+            }
           }
         });
       }
     });
-  }
+  };
 
-  // Render based on the current step
-  function getStepContent(step) {
+  // Create initial sample data
+  const createInitialData = () => {
+    // Create personal/home sample lists if selected
+    if (createPersonalLists) {
+      Meteor.call('lists.createSampleData', (error) => {
+        if (error) {
+          console.error('Error creating sample lists:', error);
+        } else {
+          console.log('Sample lists created successfully');
+        }
+      });
+    }
+    
+    // Create clinical protocols if selected
+    if (createClinicalProtocols) {
+      Meteor.call('protocols.createSampleData', (error) => {
+        if (error) {
+          console.error('Error creating clinical protocols:', error);
+        } else {
+          console.log('Clinical protocols created successfully');
+        }
+      });
+    }
+  };
+
+  // Handle page refresh after setup
+  const handleFinish = () => {
+    window.location.reload();
+  };
+
+  // Toggle sample data options
+  const handleToggleSampleData = (event) => {
+    const checked = event.target.checked;
+    setCreateSampleData(checked);
+    
+    // If main toggle is off, disable all sub-options
+    if (!checked) {
+      setCreatePersonalLists(false);
+      setCreateClinicalProtocols(false);
+    }
+  };
+
+  // Render different content based on the current step
+  const renderStepContent = (step) => {
     switch (step) {
       case 0:
         return (
@@ -137,13 +190,13 @@ export function FirstRunSetup({ onComplete }) {
             <Typography variant="h5" gutterBottom>
               Create Admin Account
             </Typography>
-            
+              
             {error && (
               <Alert severity="error" sx={{ mb: 3 }}>
                 {error}
               </Alert>
             )}
-            
+              
             <TextField
               label="Username"
               type="text"
@@ -155,7 +208,7 @@ export function FirstRunSetup({ onComplete }) {
               required
               disabled={isSubmitting}
             />
-            
+              
             <TextField
               label="Email Address (Optional)"
               type="email"
@@ -166,7 +219,7 @@ export function FirstRunSetup({ onComplete }) {
               margin="normal"
               disabled={isSubmitting}
             />
-            
+              
             <TextField
               label="Password"
               type="password"
@@ -178,7 +231,7 @@ export function FirstRunSetup({ onComplete }) {
               required
               disabled={isSubmitting}
             />
-            
+              
             <TextField
               label="Confirm Password"
               type="password"
@@ -196,7 +249,7 @@ export function FirstRunSetup({ onComplete }) {
                   : ''
               }
             />
-            
+              
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
               <Button onClick={handleBack}>
                 Back
@@ -211,8 +264,83 @@ export function FirstRunSetup({ onComplete }) {
             </Box>
           </Box>
         );
-      
+        
       case 2:
+          return (
+            <Box>
+              <Typography variant="h5" gutterBottom>
+                Sample Data
+              </Typography>
+                
+              <Typography variant="body1" paragraph>
+                Your administrator account has been created successfully and you're now logged in.
+              </Typography>
+              <Typography variant="body1" paragraph>
+                Would you like to create sample data to help you get started?
+              </Typography>
+                
+              {/* Sample data checkboxes */}
+              <Box sx={{ mt: 3, p: 3, bgcolor: 'background.paper', borderRadius: 1 }}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={createSampleData}
+                      onChange={handleToggleSampleData}
+                      disabled={isSubmitting}
+                    />
+                  }
+                  label="Create sample data for a better demo experience"
+                />
+                  
+                {createSampleData && (
+                  <Box sx={{ ml: 4, mt: 2 }}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={createPersonalLists}
+                          onChange={(e) => setCreatePersonalLists(e.target.checked)}
+                          disabled={isSubmitting || !createSampleData}
+                        />
+                      }
+                      label="Create personal/home sample task lists"
+                    />
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', ml: 4, mb: 2 }}>
+                      Includes lists like "Shopping List", "Work Tasks", and "Home Projects"
+                    </Typography>
+                    
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={createClinicalProtocols}
+                          onChange={(e) => setCreateClinicalProtocols(e.target.checked)}
+                          disabled={isSubmitting || !createSampleData}
+                        />
+                      }
+                      label="Create clinical protocol templates"
+                    />
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', ml: 4 }}>
+                      Includes protocols like "Collect Blood Specimen", "MRI Safety Checklist", and other medical procedures
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+    
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
+                <Button onClick={handleBack} disabled={isSubmitting}>
+                  Back
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={handleNext}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? <CircularProgress size={24} /> : 'Continue'}
+                </Button>
+              </Box>
+            </Box>
+          );
+
+      case 3:
         return (
           <Box>
             <Typography variant="h5" gutterBottom>
@@ -221,16 +349,32 @@ export function FirstRunSetup({ onComplete }) {
             <Typography variant="body1" paragraph>
               Your administrator account has been created successfully and you're now logged in.
             </Typography>
+            {createSampleData && (
+              <Box>
+                <Typography variant="body1" paragraph>
+                  Sample data has been created to help you get started:
+                </Typography>
+                <Box sx={{ ml: 2 }}>
+                  {createPersonalLists && (
+                    <Typography variant="body2" paragraph>
+                      • Personal task lists for everyday use
+                    </Typography>
+                  )}
+                  {createClinicalProtocols && (
+                    <Typography variant="body2" paragraph>
+                      • Clinical protocol templates for healthcare workflows
+                    </Typography>
+                  )}
+                </Box>
+              </Box>
+            )}
             <Typography variant="body1" paragraph>
-              You can now start using Checklist Manifesto to manage your tasks and create additional user accounts if needed.
+              You can now start using Checklist Manifesto to manage your tasks and lists.
             </Typography>
             <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
               <Button
                 variant="contained"
-                onClick={() => {
-                  if (onComplete) onComplete();
-                  window.location.reload();
-                }}
+                onClick={handleFinish}
               >
                 Get Started
               </Button>
@@ -241,7 +385,7 @@ export function FirstRunSetup({ onComplete }) {
       default:
         return 'Unknown step';
     }
-  }
+  };
 
   return (
     <Container maxWidth="md" sx={{ mt: 8 }}>
@@ -259,7 +403,7 @@ export function FirstRunSetup({ onComplete }) {
         </Stepper>
         
         <Box sx={{ mt: 4 }}>
-          {getStepContent(activeStep)}
+          {renderStepContent(activeStep)}
         </Box>
       </Paper>
     </Container>

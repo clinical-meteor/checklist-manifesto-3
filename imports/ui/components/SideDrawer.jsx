@@ -29,7 +29,7 @@ import ImportExportIcon from '@mui/icons-material/ImportExport';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import InfoIcon from '@mui/icons-material/Info';
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
-import ListIcon from '@mui/icons-material/List'; // Add List icon
+import ListIcon from '@mui/icons-material/List';
 
 const drawerWidth = 240;
 
@@ -82,25 +82,8 @@ export default function SideDrawer({ open, onClose, user }) {
       {/* Main Navigation */}
       <List>
 
-        
-        {/* Add Lists link */}
-        <ListItem disablePadding>
-          <ListItemButton
-            selected={isActive('/lists')}
-            onClick={() => handleNavigate('/lists')}
-            id="listsLink"
-          >
-            <ListItemIcon>
-              <ListIcon />
-            </ListItemIcon>
-            <ListItemText primary="My Lists" />
-          </ListItemButton>
-        </ListItem>
 
-        
-        
         {/* Task Filters */}
-
         <ListItem disablePadding>
           <ListItemButton
             selected={isActive('/') || isActive('/tasks/all')}
@@ -152,21 +135,8 @@ export default function SideDrawer({ open, onClose, user }) {
       
       <Divider />
       
-      {/* Second Group */}
+      {/* Second Group */}      
       <List>
-        <ListItem disablePadding>
-          <ListItemButton
-            selected={isActive('/protocols')}
-            onClick={() => handleNavigate('/protocols')}
-            id="protocolLibraryLink"
-          >
-            <ListItemIcon>
-              <MenuBookIcon />
-            </ListItemIcon>
-            <ListItemText primary="Protocol Library" />
-          </ListItemButton>
-        </ListItem>
-        
         {user && (
           <ListItem disablePadding>
             <ListItemButton
@@ -186,20 +156,20 @@ export default function SideDrawer({ open, onClose, user }) {
       
       {/* User Actions */}
       <List>
+        <ListItem disablePadding>
+          <ListItemButton
+            selected={isActive('/lists')}
+            onClick={() => handleNavigate('/lists')}
+            id="listsLink"
+          >
+            <ListItemIcon>
+              <ListIcon />
+            </ListItemIcon>
+            <ListItemText primary="Lists Library" />
+          </ListItemButton>
+        </ListItem>
         {user && (
-          <>
-            <ListItem disablePadding>
-              <ListItemButton
-                onClick={() => handleNavigate('/lists')}
-                id="newListButton"
-              >
-                <ListItemIcon>
-                  <AddCircleOutlineIcon />
-                </ListItemIcon>
-                <ListItemText primary="Manage Lists" />
-              </ListItemButton>
-            </ListItem>
-            
+          <>            
             <ListItem disablePadding>
               <ListItemButton
                 onClick={handleLogout}

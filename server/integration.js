@@ -1,7 +1,6 @@
 // server/integration.js
 import { Meteor } from 'meteor/meteor';
 import { TasksCollection } from '/imports/db/TasksCollection';
-import { initializeProtocols } from '/imports/utils/DefaultProtocols';
 import { loadEnvironmentSettings, getSetting } from './settings';
 
 /**
@@ -24,7 +23,17 @@ export async function initializeServer() {
     const adminUser = await findOrCreateAdminUser();
     
     // Load default protocols
-    await initializeProtocols(adminUser?._id);
+    try {
+      // Dynamically import the protocols module
+      const { initializeProtocols } = await import('/imports/utils/DefaultProtocols');
+      
+      // Initialize protocols with the admin user ID
+      await initializeProtocols(adminUser?._id);
+      
+      console.log('Protocol initialization completed');
+    } catch (error) {
+      console.error('Error initializing protocols:', error);
+    }
   }
   
   console.log('Server initialization complete.');

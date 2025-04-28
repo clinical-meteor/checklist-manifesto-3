@@ -3,6 +3,7 @@ import { Meteor } from 'meteor/meteor';
 import { check, Match } from 'meteor/check';
 import { get } from 'lodash';
 import { TasksCollection } from '../../db/TasksCollection';
+import { ListsCollection } from '../../db/ListsCollection';
 import moment from 'moment';
 
 /**
@@ -378,5 +379,188 @@ Meteor.methods({
         lastModified: new Date()
       }
     }, { multi: true });
+  },
+
+
+  async 'protocols.createSampleData'() {
+    // Don't run if not on server
+    if (!Meteor.isServer) return;
+    
+    // Only logged in users can create sample data
+    if (!this.userId) {
+      throw new Meteor.Error('not-authorized', 'You must be logged in to create sample data');
+    }
+    
+    console.log('Creating sample protocols for user:', this.userId);
+    
+    try {
+      // Import the DefaultProtocols array and initializeProtocols function dynamically
+      const { DefaultProtocols } = await import('/imports/utils/DefaultProtocols');
+      
+      if (!DefaultProtocols || !Array.isArray(DefaultProtocols)) {
+        throw new Error('DefaultProtocols not available or not an array');
+      }
+      
+      // Results to track created protocols
+      const results = [];
+      
+      // Create each protocol
+      for (const protocol of DefaultProtocols) {
+        try {
+          // First, create a list for this protocol
+          const listId = await ListsCollection.insertAsync({
+            resourceType: 'List',
+            status: 'active',
+            mode: 'working',
+            title: protocol.name,
+            name: protocol.name, // For backward compatibility
+            description: protocol.description,
+            incompleteCount: protocol.items?.length || 0,
+            public: true,
+            createdAt: new Date(),
+            lastModified: new Date(),
+            userId: this.userId,
+            isDeleted: false,
+            isProtocol: true // Mark this list as a protocol template
+          });
+          
+          // Create the main protocol task
+          const protocolTask = {
+            resourceType: 'Task',
+            status: protocol.status || 'ready',
+            description: protocol.name,
+            priority: protocol.priority || 'routine',
+            authoredOn: new Date(),
+            lastModified: new Date(),
+            requester: this.userId,
+            public: true,
+            isTemplate: true,
+            isProtocol: true, // Mark it as a protocol
+            isDeleted: false,
+            listId: listId // Link to the list we created
+          };
+          
+          const protocolId = await TasksCollection.insertAsync(protocolTask);
+          console.log(`Created protocol: ${protocol.name} (${protocolId})`);
+          
+          // Create subtasks if items array is provided
+          const taskIds = [];
+          if (protocol.items && Array.isArray(protocol.items)) {
+            for (let i = 0; i < protocol.items.length; i++) {
+              const item = protocol.items[i];
+              
+              const subtask = {
+                resourceType: 'Task',
+                status: 'ready',
+                description: item,
+                priority: protocol.priority || 'routine',
+                authoredOn: new Date(),
+                lastModified: new Date(),
+                requester: this.userId,
+                public: true,
+                isDeleted: false,
+                partOf: {
+                  reference: `Task/${protocolId}`,
+                  display: protocol.name
+                },
+                listId: listId, // Link to the list we created
+                ordinal: i
+              };
+              
+              const taskId = await TasksCollection.insertAsync(subtask);
+              taskIds.push(taskId);
+            }
+            
+            console.log(`Added ${protocol.items.length} items to protocol: ${protocol.name}`);
+          }
+          
+          results.push({
+            listId,
+            protocolId,
+            name: protocol.name,
+            itemCount: taskIds.length
+          });
+        } catch (error) {
+          console.error(`Error creating protocol "${protocol.name}":`, error);
+        }
+      }
+      
+      return {
+        success: true,
+        protocols: results
+      };
+    } catch (error) {
+      console.error('Error creating sample protocols:', error);
+      throw new Meteor.Error('create-protocols-failed', error.message);
+    }
+  },
+  
+  /**
+   * Create a new protocol template
+   * @param {Object} options Protocol properties
+   * @returns {String} ID of the new protocol
+   */
+  'protocols.create'(options = {}) {
+    check(options, {
+      name: String,
+      description: Match.Optional(String),
+      priority: Match.Optional(String),
+      public: Match.Optional(Boolean),
+      items: Match.Optional([String])
+    });
+    
+    if (!this.userId) {
+      throw new Meteor.Error('not-authorized', 'You must be logged in to create protocols');
+    }
+    
+    try {
+      // Create the main protocol task
+      const protocol = {
+        resourceType: 'Task',
+        status: 'ready',
+        description: options.name,
+        priority: options.priority || 'routine',
+        authoredOn: new Date(),
+        lastModified: new Date(),
+        requester: this.userId,
+        public: options.public !== undefined ? options.public : false,
+        isProtocol: true,
+        isDeleted: false
+      };
+      
+      const protocolId = TasksCollection.insert(protocol);
+      
+      // Create subtasks if items array is provided
+      if (options.items && Array.isArray(options.items)) {
+        for (let i = 0; i < options.items.length; i++) {
+          const item = options.items[i];
+          
+          const subtask = {
+            resourceType: 'Task',
+            status: 'ready',
+            description: item,
+            priority: options.priority || 'routine',
+            authoredOn: new Date(),
+            lastModified: new Date(),
+            requester: this.userId,
+            public: options.public !== undefined ? options.public : false,
+            isDeleted: false,
+            partOf: {
+              reference: `Task/${protocolId}`,
+              display: options.name
+            },
+            ordinal: i
+          };
+          
+          TasksCollection.insert(subtask);
+        }
+      }
+      
+      return protocolId;
+    } catch (error) {
+      throw new Meteor.Error('protocols.create.error', error.message);
+    }
   }
+
+
 });

@@ -19,6 +19,8 @@ import NotFoundPage from './pages/NotFoundPage';
 import FirstRunSetupPage from './pages/FirstRunSetupPage';
 import ListsPage from './pages/ListsPage';          // Import ListsPage
 import ListDetailPage from './pages/ListDetailPage'; // Import ListDetailPage
+import CombinedListsPage from './pages/CombinedListsPage'; // Import our new combined page
+
 
 export function App() {
   const [isFirstRun, setIsFirstRun] = useState(false);
@@ -73,7 +75,8 @@ export function App() {
         <Route path="/tasks/:filter" element={user ? <TaskListPage /> : <Navigate to="/login" replace />} />          <Route path="/task/:taskId" element={user ? <TaskDetailsPage /> : <Navigate to="/login" replace />} />
           <Route path="/protocols" element={<ProtocolLibraryPage />} />
           <Route path="/import-export" element={user ? <ImportExportPage /> : <Navigate to="/login" replace />} />
-          <Route path="/protocols" element={<ProtocolLibraryPage />} />
+          {/* <Route path="/protocols" element={<ProtocolLibraryPage />} /> */}
+          <Route path="/protocols" element={<CombinedListsPage />} /> 
           <Route path="/protocol/:protocolId" element={user ? <TaskDetailsPage isProtocol={true} /> : <Navigate to="/login" replace />} /> 
 
           <Route path="/lists" element={user ? <ListsPage /> : <Navigate to="/login" replace />} />

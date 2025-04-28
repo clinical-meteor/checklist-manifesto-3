@@ -66,33 +66,7 @@ export default function ImportExportPage() {
       </Box>
       
       <Paper sx={{ mb: 3 }}>
-        <Tabs
-          value={tabValue}
-          onChange={handleTabChange}
-          variant="fullWidth"
-          aria-label="Import/Export tabs"
-        >
-          <Tab label="Export" id="export-tab" aria-controls="export-panel" />
-          <Tab label="Import" id="import-tab" aria-controls="import-panel" />
-        </Tabs>
-        
-        <Divider />
-        
-        <Box role="tabpanel" hidden={tabValue !== 0} id="export-panel" aria-labelledby="export-tab">
-          {tabValue === 0 && (
-            <Box p={3}>
-              <TaskDataExporter defaultMode="export" />
-            </Box>
-          )}
-        </Box>
-        
-        <Box role="tabpanel" hidden={tabValue !== 1} id="import-panel" aria-labelledby="import-tab">
-          {tabValue === 1 && (
-            <Box p={3}>
-              <TaskDataExporter defaultMode="import" />
-            </Box>
-          )}
-        </Box>
+        <TaskDataExporter defaultMode="export" />
       </Paper>
     </Container>
   );

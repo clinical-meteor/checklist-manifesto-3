@@ -18,10 +18,7 @@ import '/imports/api/users/publications';
 import '/imports/api/lists/methods';
 import '/imports/api/lists/publications';
 
-// Import the sample data methods
-
-// import { initializeSampleData } from './sample-data-methods';
-
+// Import the integration functions
 import '/server/integration';
 
 // We'll define the checkFirstRun function here to avoid the import issue
@@ -45,7 +42,7 @@ async function checkFirstRun() {
   }
 }
 
-// server/main.js - Add this function or fix existing one
+
 async function initializeDefaultProtocols() {
   try {
     // Check if we need to load default protocols based on settings
@@ -72,8 +69,11 @@ async function initializeDefaultProtocols() {
       
       if (protocolCount === 0 && userId) {
         console.log('No protocols found, initializing default protocols...');
-        // Import the utility function and create protocols
-        const { initializeProtocols } = await import('/imports/utils/DefaultProtocols');
+        
+        // Import the DefaultProtocols array and initializeProtocols function dynamically
+        const { DefaultProtocols, initializeProtocols } = await import('/imports/utils/DefaultProtocols');
+        
+        // Call the initialization function with proper parameters
         await initializeProtocols(userId, true); // Force creation with the second parameter
         console.log('Default protocols initialized successfully');
       } else {
@@ -84,7 +84,6 @@ async function initializeDefaultProtocols() {
     console.error('Error initializing default protocols:', error);
   }
 }
-
 
 // Function to create seed tasks (unchanged)
 async function insertTask(description, userId, options = {}) {
@@ -195,11 +194,6 @@ Meteor.startup(async function() {
 
         console.log('Seed tasks created successfully.');
       }
-      
-      // // Initialize sample data if enabled in settings
-      // if (getSetting('createSampleData', false)) {
-      //   initializeSampleData();
-      // }
     }
   } catch (error) {
     console.error('Error during startup:', error);

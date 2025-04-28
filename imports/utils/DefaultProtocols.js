@@ -1,6 +1,7 @@
 // imports/utils/DefaultProtocols.js
 import { Meteor } from 'meteor/meteor';
 import { TasksCollection } from '../db/TasksCollection';
+import { ListsCollection } from '../db/ListsCollection';
 
 /**
  * Collection of default protocols that can be loaded into the system
@@ -118,7 +119,10 @@ export async function initializeProtocols(userId = null, force = false) {
   if (!Meteor.isServer) return;
   
   // Check if we need to load protocols
-  const protocolCount = await TasksCollection.countDocuments({ public: true });
+  const protocolCount = await TasksCollection.countDocumentsAsync({ 
+    isProtocol: true, 
+    public: true 
+  });
   
   if (protocolCount > 0 && !force) {
     console.log('Default protocols not loaded: protocols already exist');
@@ -132,6 +136,25 @@ export async function initializeProtocols(userId = null, force = false) {
   
   try {
     for (const protocol of DefaultProtocols) {
+      // First, create a list for this protocol
+      const listId = await ListsCollection.insertAsync({
+        resourceType: 'List',
+        status: 'active',
+        mode: 'working',
+        title: protocol.name,
+        name: protocol.name, // For backward compatibility
+        description: protocol.description,
+        incompleteCount: protocol.items?.length || 0,
+        public: true,
+        createdAt: new Date(),
+        lastModified: new Date(),
+        userId: creatorId,
+        isDeleted: false,
+        isProtocol: true // Mark this list as a protocol template
+      });
+      
+      console.log(`Created protocol list: ${protocol.name} (${listId})`);
+      
       // Create the main protocol task
       const protocolTask = {
         resourceType: 'Task',
@@ -142,12 +165,14 @@ export async function initializeProtocols(userId = null, force = false) {
         lastModified: new Date(),
         requester: creatorId,
         public: true,
+        isProtocol: true,
         isTemplate: true,
-        isDeleted: false
+        isDeleted: false,
+        listId: listId // Link to the list we created
       };
       
       const protocolId = await TasksCollection.insertAsync(protocolTask);
-      console.log(`Created protocol: ${protocol.name} (${protocolId})`);
+      console.log(`Created protocol task: ${protocol.name} (${protocolId})`);
       
       // Create subtasks if items array is provided
       if (protocol.items && Array.isArray(protocol.items)) {
@@ -168,6 +193,7 @@ export async function initializeProtocols(userId = null, force = false) {
               reference: `Task/${protocolId}`,
               display: protocol.name
             },
+            listId: listId, // Link to the list we created
             ordinal: i
           };
           
@@ -183,3 +209,9 @@ export async function initializeProtocols(userId = null, force = false) {
     console.error('Error loading default protocols:', error);
   }
 }
+
+// Export both the array and the function to initialize protocols
+export default {
+  DefaultProtocols,
+  initializeProtocols
+};
