@@ -80,8 +80,8 @@ export default function TaskForm({ listId, onSuccess }) {
       <form onSubmit={handleSubmit}>
         <CardContent sx={{ p: 2, pb: 2 }}>
           <Grid container spacing={2} alignItems="center">
-            {/* Task description input */}
-            <Grid item xs={12} md={5}>
+            {/* Task description input - updated to flex-grow */}
+            <Grid item xs={12} md={6} sx={{ flexGrow: 1 }}>
               <TextField
                 placeholder="Create new task..."
                 variant="outlined"
@@ -99,8 +99,8 @@ export default function TaskForm({ listId, onSuccess }) {
               />
             </Grid>
 
-            {/* Priority selection */}
-            <Grid item xs={12} sm={6} md={2}>
+            {/* Priority selection - fixed width */}
+            <Grid item xs={12} sm={6} md={2} sx={{ flexShrink: 0 }}>
               <FormControl fullWidth size="small">
                 <InputLabel id="priority-label">Priority</InputLabel>
                 <Select
@@ -119,8 +119,8 @@ export default function TaskForm({ listId, onSuccess }) {
               </FormControl>
             </Grid>
             
-            {/* Due date picker */}
-            <Grid item xs={12} sm={6} md={3}>
+            {/* Due date picker - fixed width */}
+            <Grid item xs={12} sm={6} md={2} sx={{ flexShrink: 0 }}>
               <LocalizationProvider dateAdapter={AdapterMoment}>
                 <DateTimePicker
                   label="Due Date"
@@ -133,8 +133,8 @@ export default function TaskForm({ listId, onSuccess }) {
               </LocalizationProvider>
             </Grid>
             
-            {/* Add button */}
-            <Grid item xs={12} md={2} sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+            {/* Add button - fixed width */}
+            <Grid item xs={12} md={2} sx={{ flexShrink: 0, display: 'flex', justifyContent: 'flex-end' }}>
               <Button
                 variant="contained"
                 startIcon={isSubmitting ? <CircularProgress size={20} color="inherit" /> : <AddIcon />}

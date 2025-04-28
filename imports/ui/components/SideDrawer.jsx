@@ -84,18 +84,7 @@ export default function SideDrawer({ open, onClose, user }) {
 
 
         {/* Task Filters */}
-        <ListItem disablePadding>
-          <ListItemButton
-            selected={isActive('/') || isActive('/tasks/all')}
-            onClick={() => handleNavigate('/tasks/all')}
-            id="homeLink"
-          >
-            <ListItemIcon>
-              <HomeIcon />
-            </ListItemIcon>
-            <ListItemText primary="All Tasks" />
-          </ListItemButton>
-        </ListItem>
+
         <ListItem disablePadding>
           <ListItemButton
             selected={isActive('/tasks/active')}
@@ -129,6 +118,18 @@ export default function SideDrawer({ open, onClose, user }) {
               <AccessTimeIcon />
             </ListItemIcon>
             <ListItemText primary="Due Soon" />
+          </ListItemButton>
+        </ListItem>
+        <ListItem disablePadding>
+          <ListItemButton
+            selected={isActive('/') || isActive('/tasks/all')}
+            onClick={() => handleNavigate('/tasks/all')}
+            id="homeLink"
+          >
+            <ListItemIcon>
+              <HomeIcon />
+            </ListItemIcon>
+            <ListItemText primary="All Tasks" />
           </ListItemButton>
         </ListItem>
       </List>

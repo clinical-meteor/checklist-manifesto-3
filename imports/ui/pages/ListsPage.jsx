@@ -38,6 +38,8 @@ import LockIcon from '@mui/icons-material/Lock';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
+import PreviewIcon from '@mui/icons-material/Preview';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 
 // Components
 import ListForm from '../components/ListForm';
@@ -46,7 +48,7 @@ import { ListConfigModal } from '../components/ListConfigModal';
 // Collections
 import { ListsCollection } from '../../db/ListsCollection';
 
-export function ListsPage() {
+export default function ListsPage() {
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -96,14 +98,11 @@ export function ListsPage() {
       filter.public = true;
     } else if (Meteor.userId()) {
       // If not showing only public lists, show user's own lists
-      filter.userId = Meteor.userId();
+      filter.$or = [
+        { userId: Meteor.userId() },
+        { public: true }
+      ];
     }
-    
-    // Log the current filter for debugging
-    console.log('Lists filter:', filter);
-    
-    // Log the current user ID for debugging
-    console.log('Current user ID:', Meteor.userId());
     
     return {
       listsLoading: !listsSub.ready() || !userSub.ready(),
@@ -114,13 +113,6 @@ export function ListsPage() {
       currentUser: Meteor.user()
     };
   }, [searchTerm, showPublicOnly]);
-  
-  // Log the fetched lists for debugging
-  useEffect(() => {
-    if (!listsLoading) {
-      console.log('Fetched lists:', lists);
-    }
-  }, [lists, listsLoading]);
   
   // Handle creating a new list
   function handleNewListSaved(listId) {
@@ -138,7 +130,8 @@ export function ListsPage() {
   }
   
   // Handle opening config modal
-  function handleOpenConfig(listId) {
+  function handleOpenConfig(e, listId) {
+    e.stopPropagation(); // Prevent navigation
     setSelectedListId(listId);
     setConfigModalOpen(true);
   }
@@ -172,6 +165,62 @@ export function ListsPage() {
     }
   }
   
+  // Handle cloning a list
+  function handleCloneList(e, list) {
+    e.stopPropagation(); // Prevent navigation
+    
+    if (!currentUser) {
+      setNotification({
+        open: true,
+        message: 'Please sign in to clone lists',
+        severity: 'warning'
+      });
+      return;
+    }
+    
+    Meteor.call('lists.clone', list._id, {}, (error, result) => {
+      if (error) {
+        console.error('Error cloning list:', error);
+        setNotification({
+          open: true,
+          message: `Error: ${error.reason || 'Failed to clone list'}`,
+          severity: 'error'
+        });
+      } else {
+        setNotification({
+          open: true,
+          message: 'List cloned successfully!',
+          severity: 'success'
+        });
+        
+        // Navigate to the new list
+        navigate(`/list/${result}`);
+      }
+    });
+  }
+  
+  // Handle toggling public status
+  function handleTogglePublic(e, list) {
+    e.stopPropagation(); // Prevent navigation
+    
+    Meteor.call('lists.togglePublic', list._id, (error) => {
+      if (error) {
+        console.error('Error toggling list visibility:', error);
+        setNotification({
+          open: true,
+          message: `Error: ${error.reason || 'Failed to update list visibility'}`,
+          severity: 'error'
+        });
+      } else {
+        setNotification({
+          open: true,
+          message: `List is now ${list.public ? 'private' : 'public'}`,
+          severity: 'success'
+        });
+      }
+    });
+  }
+  
   // Format creation date for display
   function formatDate(date) {
     if (!date) return 'Unknown';
@@ -182,11 +231,6 @@ export function ListsPage() {
     });
   }
   
-  // Close notification
-  function handleCloseNotification() {
-    setNotification({ ...notification, open: false });
-  }
-  
   // Handle search input change
   function handleSearchChange(e) {
     setSearchTerm(e.target.value);
@@ -195,6 +239,11 @@ export function ListsPage() {
   // Toggle between showing all lists or public lists only
   function togglePublicFilter() {
     setShowPublicOnly(!showPublicOnly);
+  }
+  
+  // Close notification
+  function handleCloseNotification() {
+    setNotification({ ...notification, open: false });
   }
   
   // Create a new list directly (without form)
@@ -220,6 +269,12 @@ export function ListsPage() {
         navigate(`/list/${listId}`);
       }
     });
+  }
+  
+  // Check if current user can edit this list
+  function canEditList(list) {
+    if (!list || !currentUser) return false;
+    return list.userId === currentUser._id;
   }
   
   return (
@@ -320,8 +375,12 @@ export function ListsPage() {
             {lists.map((list) => (
               <React.Fragment key={list._id}>
                 <ListItem 
-                  button
-                  onClick={() => handleGoToList(list._id)}
+                  component="div"
+                  sx={{
+                    borderLeft: 4,
+                    borderColor: 'primary.main',
+                    cursor: 'pointer'
+                  }}
                   className="listItem"
                 >
                   <ListItemIcon>
@@ -329,7 +388,7 @@ export function ListsPage() {
                   </ListItemIcon>
                   <ListItemText
                     primary={
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center' }} onClick={() => handleGoToList(list._id)}>
                         <Typography variant="subtitle1">
                           {list.title || list.name}
                         </Typography>
@@ -341,7 +400,7 @@ export function ListsPage() {
                       </Box>
                     }
                     secondary={
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 0.5 }}>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 0.5 }} onClick={() => handleGoToList(list._id)}>
                         {list.description && (
                           <Typography variant="body2" color="text.secondary">
                             {list.description}
@@ -362,22 +421,50 @@ export function ListsPage() {
                         </Box>
                       </Box>
                     }
+                    onClick={() => handleGoToList(list._id)}
                   />
                   <ListItemSecondaryAction>
-                    {list.userId === currentUser?._id && (
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<PreviewIcon />}
+                      onClick={() => handleGoToList(list._id)}
+                      sx={{ mr: 1 }}
+                    >
+                      Open
+                    </Button>
+
+                    <Button
+                      variant="contained"
+                      size="small"
+                      startIcon={<ContentCopyIcon />}
+                      onClick={(e) => handleCloneList(e, list)}
+                      sx={{ mr: 1 }}
+                    >
+                      Clone
+                    </Button>
+
+                    {canEditList(list) && (
                       <>
                         <IconButton
                           edge="end"
                           aria-label="edit"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenConfig(list._id);
-                          }}
+                          onClick={(e) => handleOpenConfig(e, list._id)}
                           id="checklistConfig"
                           sx={{ mr: 1 }}
                         >
                           <EditIcon />
                         </IconButton>
+
+                        <IconButton
+                          edge="end"
+                          aria-label="toggle visibility"
+                          onClick={(e) => handleTogglePublic(e, list)}
+                          sx={{ mr: 1 }}
+                        >
+                          {list.public ? <PublicIcon color="primary" /> : <LockIcon />}
+                        </IconButton>
+
                         <IconButton
                           edge="end"
                           aria-label="delete"
@@ -407,6 +494,7 @@ export function ListsPage() {
                   : 'Create your first list to get started'
               }
             </Typography>
+            
             {!showForm && !searchTerm && !showPublicOnly && (
               <Button 
                 variant="contained" 
@@ -433,5 +521,3 @@ export function ListsPage() {
     </Container>
   );
 }
-
-export default ListsPage;

@@ -17,8 +17,9 @@ import TextField from '@mui/material/TextField';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import FormControl from '@mui/material/FormControl';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import Checkbox from '@mui/material/Checkbox';
+import InputLabel from '@mui/material/InputLabel';
+import MenuItem from '@mui/material/MenuItem';
+import Select from '@mui/material/Select';
 import CircularProgress from '@mui/material/CircularProgress';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
@@ -27,9 +28,6 @@ import CardActions from '@mui/material/CardActions';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import Divider from '@mui/material/Divider';
-import InputLabel from '@mui/material/InputLabel';
-import MenuItem from '@mui/material/MenuItem';
-import Select from '@mui/material/Select';
 
 // Icons
 import FileUploadIcon from '@mui/icons-material/FileUpload';
@@ -58,8 +56,6 @@ export function TaskDataExporter(props) {
   const [fileName, setFileName] = useState('tasks-export-' + moment().format('YYYY-MM-DD'));
   const [isLoading, setIsLoading] = useState(false);
   const [notification, setNotification] = useState({ open: false, message: '', severity: 'info' });
-  const [selectedTasks, setSelectedTasks] = useState([]);
-  const [selectAll, setSelectAll] = useState(true);
 
   // Theme from context
   let theme = 'light';
@@ -68,25 +64,21 @@ export function TaskDataExporter(props) {
     theme = themeContext.theme;
   }
 
-  // Get all tasks from database
+  // Get personal tasks from database (owned by current user)
   const { tasks, tasksLoading } = useTracker(() => {
     const tasksHandle = Meteor.subscribe('tasks.mine');
     
     return {
       tasks: TasksCollection.find(
-        {}, 
+        { 
+          requester: Meteor.userId(), // Only get tasks owned by the current user
+          isDeleted: { $ne: true }
+        }, 
         { sort: { lastModified: -1 } }
       ).fetch(),
       tasksLoading: !tasksHandle.ready()
     };
   });
-
-  // Update selected tasks when tasks are loaded
-  useEffect(() => {
-    if (tasks && tasks.length > 0 && selectAll) {
-      setSelectedTasks(tasks.map(task => task._id));
-    }
-  }, [tasks, selectAll]);
 
   // Handle file dropping
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -137,11 +129,8 @@ export function TaskDataExporter(props) {
     setIsLoading(true);
     
     try {
-      // Filter selected tasks
-      const tasksToExport = tasks.filter(task => selectedTasks.includes(task._id));
-      
-      if (tasksToExport.length === 0) {
-        showNotification('No tasks selected for export', 'warning');
+      if (tasks.length === 0) {
+        showNotification('No tasks available for export', 'warning');
         setIsLoading(false);
         return;
       }
@@ -154,7 +143,7 @@ export function TaskDataExporter(props) {
           meta: {
             lastUpdated: new Date().toISOString()
           },
-          entry: tasksToExport.map(task => ({
+          entry: tasks.map(task => ({
             fullUrl: `Task/${task.id || task._id}`,
             resource: sanitizeTaskForExport(task),
             request: {
@@ -167,7 +156,7 @@ export function TaskDataExporter(props) {
         setExportData(JSON.stringify(bundle, null, 2));
       } else {
         // Create NDJSON format (one JSON object per line)
-        const ndjson = tasksToExport
+        const ndjson = tasks
           .map(task => JSON.stringify(sanitizeTaskForExport(task)))
           .join('\n');
         
@@ -176,7 +165,7 @@ export function TaskDataExporter(props) {
       
       // Switch to the export tab
       setTabIndex(1);
-      showNotification(`${tasksToExport.length} tasks prepared for export`, 'success');
+      showNotification(`${tasks.length} tasks prepared for export`, 'success');
     } catch (error) {
       console.error('Error generating export:', error);
       showNotification('Error generating export: ' + error.message, 'error');
@@ -374,26 +363,12 @@ export function TaskDataExporter(props) {
     }
   }
 
-  // Handle Select All toggle
-  function handleSelectAllToggle(event) {
-    const checked = event.target.checked;
-    setSelectAll(checked);
-    
-    if (checked) {
-      setSelectedTasks(tasks.map(task => task._id));
-    } else {
-      setSelectedTasks([]);
+  // Generate export automatically when tasks are loaded
+  useEffect(() => {
+    if (!tasksLoading && tabIndex === 1 && !exportData) {
+      generateExport();
     }
-  }
-
-  // Handle individual task selection
-  function handleTaskSelection(taskId, checked) {
-    if (checked) {
-      setSelectedTasks([...selectedTasks, taskId]);
-    } else {
-      setSelectedTasks(selectedTasks.filter(id => id !== taskId));
-    }
-  }
+  }, [tasksLoading, tabIndex, exportFormat]);
 
   return (
     <Box sx={{ py: 2 }}>
@@ -535,36 +510,40 @@ export function TaskDataExporter(props) {
       ) : (
         // Export Tab
         <Grid container spacing={3}>
-          <Grid item xs={12} md={7}>
+          <Grid item xs={12}>
             <Card>
               <CardHeader title="Export Tasks" />
               <CardContent>
                 <Box sx={{ mb: 3 }}>
-                  <TextField
-                    label="File Name"
-                    value={fileName}
-                    onChange={(e) => setFileName(e.target.value)}
-                    fullWidth
-                    sx={{ mb: 2 }}
-                  />
-                  
-                  <FormControl fullWidth>
-                    <InputLabel id="export-format-label">Export Format</InputLabel>
-                    <Select
-                      labelId="export-format-label"
-                      id="export-format-select"
-                      value={exportFormat}
-                      label="Export Format"
-                      onChange={(e) => setExportFormat(e.target.value)}
-                    >
-                      <MenuItem value="bundle">FHIR Bundle (.json)</MenuItem>
-                      <MenuItem value="ndjson">NDJSON (.ndjson)</MenuItem>
-                    </Select>
-                  </FormControl>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        label="File Name"
+                        value={fileName}
+                        onChange={(e) => setFileName(e.target.value)}
+                        fullWidth
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <FormControl fullWidth>
+                        <InputLabel id="export-format-label">Export Format</InputLabel>
+                        <Select
+                          labelId="export-format-label"
+                          id="export-format-select"
+                          value={exportFormat}
+                          label="Export Format"
+                          onChange={(e) => setExportFormat(e.target.value)}
+                        >
+                          <MenuItem value="bundle">FHIR Bundle (.json)</MenuItem>
+                          <MenuItem value="ndjson">NDJSON (.ndjson)</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                  </Grid>
                 </Box>
                 
                 <Typography variant="subtitle2" gutterBottom>
-                  Export Data:
+                  Export Data: {tasks.length} Personal Tasks
                 </Typography>
                 
                 <AceEditor
@@ -609,71 +588,6 @@ export function TaskDataExporter(props) {
                   disabled={!exportData || isLoading}
                 >
                   {isLoading ? <CircularProgress size={24} /> : 'Download'}
-                </Button>
-              </CardActions>
-            </Card>
-          </Grid>
-          
-          <Grid item xs={12} md={5}>
-            <Card>
-              <CardHeader 
-                title="Select Tasks to Export" 
-                action={
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={selectAll}
-                        onChange={handleSelectAllToggle}
-                      />
-                    }
-                    label="Select All"
-                  />
-                }
-              />
-              <CardContent sx={{ maxHeight: '400px', overflow: 'auto' }}>
-                {tasksLoading ? (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-                    <CircularProgress />
-                  </Box>
-                ) : tasks.length > 0 ? (
-                  <Box>
-                    {tasks.map(task => (
-                      <Box key={task._id} sx={{ mb: 1, display: 'flex', alignItems: 'flex-start' }}>
-                        <Checkbox
-                          checked={selectedTasks.includes(task._id)}
-                          onChange={(e) => handleTaskSelection(task._id, e.target.checked)}
-                          sx={{ pt: 0 }}
-                        />
-                        <Box>
-                          <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
-                            {task.description || 'Untitled Task'}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {task.status} • {task.priority || 'routine'}
-                            {get(task, 'executionPeriod.end') && (
-                              ` • Due ${moment(get(task, 'executionPeriod.end')).format('MMM D, YYYY')}`
-                            )}
-                          </Typography>
-                        </Box>
-                      </Box>
-                    ))}
-                  </Box>
-                ) : (
-                  <Typography color="text.secondary" align="center">
-                    No tasks found
-                  </Typography>
-                )}
-              </CardContent>
-              <CardActions>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  startIcon={<CodeIcon />}
-                  onClick={generateExport}
-                  disabled={tasks.length === 0 || selectedTasks.length === 0 || isLoading}
-                  fullWidth
-                >
-                  {isLoading ? <CircularProgress size={24} /> : 'Generate Export'}
                 </Button>
               </CardActions>
             </Card>

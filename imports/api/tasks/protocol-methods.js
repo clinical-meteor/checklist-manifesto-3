@@ -560,6 +560,141 @@ Meteor.methods({
     } catch (error) {
       throw new Meteor.Error('protocols.create.error', error.message);
     }
+  },
+
+  /**
+   * Ensure system protocol templates exist
+   * @returns {Object} Results of the operation
+   */
+  'protocols.ensureSystemTemplates'() {
+    // Requires server environment
+    if (!Meteor.isServer) {
+      throw new Meteor.Error('server-only', 'This method can only be called from the server');
+    }
+    
+    try {
+      // Import the DefaultProtocols function dynamically
+      const { initializeProtocols } = require('/imports/utils/DefaultProtocols');
+      
+      // Initialize with 'system' ID (null will default to 'system') and force=false
+      // This will only create templates if they don't exist yet
+      initializeProtocols(null, false);
+      
+      return {
+        success: true,
+        message: 'System protocol templates verified or created'
+      };
+    } catch (error) {
+      console.error('Error ensuring system protocol templates:', error);
+      throw new Meteor.Error('templates-error', error.message);
+    }
+  },
+
+  /**
+   * Clone system template protocols to the current user's account
+   * @param {Number} limit - Optional limit to the number of protocols to clone
+   * @returns {Object} Results with IDs of cloned protocols
+   */
+  'protocols.cloneSystemTemplatesToUser'(limit = 3) {
+    check(limit, Number);
+    
+    if (!this.userId) {
+      throw new Meteor.Error('not-authorized', 'You must be logged in to clone protocols');
+    }
+    
+    try {
+      // Find system template protocols
+      const systemProtocols = TasksCollection.find({
+        isProtocol: true,
+        isSystemTemplate: true,
+        public: true,
+        isDeleted: { $ne: true }
+      }, {
+        sort: { lastModified: -1 },
+        limit: limit
+      }).fetch();
+      
+      const results = [];
+      
+      // Clone each protocol to the user's account
+      for (const protocol of systemProtocols) {
+        // Create a cloned task from the protocol
+        const task = {
+          resourceType: 'Task',
+          status: 'requested',
+          description: protocol.description,
+          priority: protocol.priority || 'routine',
+          authoredOn: new Date(),
+          lastModified: new Date(),
+          requester: this.userId,
+          isDeleted: false,
+          createdFromProtocol: protocol._id
+        };
+        
+        // Copy execution period if present, setting due date to a week from now
+        if (get(protocol, 'executionPeriod')) {
+          task.executionPeriod = {};
+          
+          if (get(protocol, 'executionPeriod.start')) {
+            task.executionPeriod.start = new Date();
+          }
+          
+          // Set due date to a week from now
+          const dueDate = new Date();
+          dueDate.setDate(dueDate.getDate() + 7);
+          task.executionPeriod.end = dueDate;
+        }
+        
+        // Insert the task
+        const taskId = TasksCollection.insert(task);
+        
+        // Find and copy subtasks from the protocol
+        const subtasks = TasksCollection.find({
+          partOf: { reference: `Task/${protocol._id}` },
+          isDeleted: { $ne: true }
+        }, {
+          sort: { ordinal: 1 }
+        }).fetch();
+        
+        if (subtasks.length > 0) {
+          subtasks.forEach((subtask, index) => {
+            const newSubtask = {
+              resourceType: 'Task',
+              status: 'requested',
+              description: subtask.description,
+              priority: subtask.priority || task.priority,
+              authoredOn: new Date(),
+              lastModified: new Date(),
+              requester: this.userId,
+              isDeleted: false,
+              partOf: {
+                reference: `Task/${taskId}`,
+                display: task.description
+              },
+              ordinal: subtask.ordinal || index
+            };
+            
+            TasksCollection.insert(newSubtask);
+          });
+        }
+        
+        results.push({
+          originalId: protocol._id,
+          clonedId: taskId,
+          description: protocol.description,
+          subtaskCount: subtasks.length
+        });
+      }
+      
+      return {
+        success: true,
+        clonedCount: results.length,
+        protocols: results
+      };
+    } catch (error) {
+      console.error('Error cloning system protocols:', error);
+      throw new Meteor.Error('clone-failed', error.message);
+    }
   }
 
 

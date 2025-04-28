@@ -1,5 +1,5 @@
-// imports/ui/components/TaskList.jsx - With DOM nesting fixes
-import React from 'react';
+// imports/ui/components/TaskList.jsx
+import React, { useState, useEffect } from 'react';
 import { Meteor } from 'meteor/meteor';
 import { useTracker } from 'meteor/react-meteor-data';
 import { get } from 'lodash';
@@ -28,10 +28,10 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import PriorityHighIcon from '@mui/icons-material/PriorityHigh';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 
-// Import Task component
-import { Task } from './Task';
+export function TaskList({ filter, sort = 'lastModified' }) {
+  // Local state for sorted tasks
+  const [sortedTasks, setSortedTasks] = useState([]);
 
-export function TaskList({ filter }) {
   // Track tasks based on the current filter
   const { tasks, isLoading } = useTracker(function() {
     // Different subscription based on filter
@@ -63,18 +63,106 @@ export function TaskList({ filter }) {
       selector['executionPeriod.end'] = { $lte: cutoffDate, $gte: new Date() };
       selector.status = { $nin: ['completed', 'cancelled', 'entered-in-error'] };
     }
-    
-    // Fetch tasks based on selector
-    const tasksList = TasksCollection.find(
-      selector,
-      { sort: { lastModified: -1 } }
-    ).fetch();
 
+    // We'll only apply basic sorting in the database query
+    // and do more complex sorting in the component
     return {
-      tasks: tasksList,
+      tasks: TasksCollection.find(
+        selector,
+        { sort: { lastModified: -1 } }
+      ).fetch(),
       isLoading: !tasksSub.ready()
     };
-  });
+  }, [filter]);
+
+  // Apply sorting when tasks or sort parameter changes
+  useEffect(() => {
+    if (!tasks || tasks.length === 0) return;
+
+    // Apply sorting based on the sort parameter
+    let sorted = [...tasks]; // Create a new array to avoid modifying the original
+    
+    switch (sort) {
+      case 'dueDate':
+        // Sort by due date (ascending, with null dates at the end)
+        sorted = sorted.sort((a, b) => {
+          const dateA = get(a, 'executionPeriod.end');
+          const dateB = get(b, 'executionPeriod.end');
+          
+          if (!dateA && !dateB) return 0;
+          if (!dateA) return 1; // A goes after B
+          if (!dateB) return -1; // A goes before B
+          
+          return new Date(dateA) - new Date(dateB);
+        });
+        break;
+        
+      case 'priority':
+        // Sort by priority (urgent > stat > asap > routine)
+        const priorityOrder = {
+          'stat': 1,
+          'urgent': 2,
+          'asap': 3,
+          'routine': 4
+        };
+        
+        sorted = sorted.sort((a, b) => {
+          const priorityA = get(a, 'priority', 'routine');
+          const priorityB = get(b, 'priority', 'routine');
+          const orderA = get(priorityOrder, priorityA, 5);
+          const orderB = get(priorityOrder, priorityB, 5);
+          return orderA - orderB;
+        });
+        break;
+        
+      case 'status':
+        // Sort by status alphabetically
+        sorted = sorted.sort((a, b) => {
+          const statusA = get(a, 'status', '');
+          const statusB = get(b, 'status', '');
+          return statusA.localeCompare(statusB);
+        });
+        break;
+        
+      case 'description':
+        // Sort alphabetically by description
+        sorted = sorted.sort((a, b) => {
+          const descA = get(a, 'description', '');
+          const descB = get(b, 'description', '');
+          return descA.localeCompare(descB);
+        });
+        break;
+        
+      case 'authoredOn':
+        // Sort by creation date (newest first)
+        sorted = sorted.sort((a, b) => {
+          const dateA = get(a, 'authoredOn');
+          const dateB = get(b, 'authoredOn');
+          
+          if (!dateA && !dateB) return 0;
+          if (!dateA) return 1;
+          if (!dateB) return -1;
+          
+          return new Date(dateB) - new Date(dateA);
+        });
+        break;
+        
+      default:
+        // Default sort by last modified (newest first)
+        sorted = sorted.sort((a, b) => {
+          const dateA = get(a, 'lastModified');
+          const dateB = get(b, 'lastModified');
+          
+          if (!dateA && !dateB) return 0;
+          if (!dateA) return 1;
+          if (!dateB) return -1;
+          
+          return new Date(dateB) - new Date(dateA);
+        });
+    }
+    
+    setSortedTasks(sorted);
+  }, [tasks, sort]);
 
   // Handle task deletion
   async function handleDeleteTask(taskId) {
@@ -123,7 +211,7 @@ export function TaskList({ filter }) {
   }
 
   // Display message if no tasks
-  if (tasks.length === 0) {
+  if (!sortedTasks.length && !isLoading) {
     return (
       <Paper sx={{ p: 2, mt: 2 }}>
         <Typography variant="subtitle1" align="center">
@@ -133,30 +221,11 @@ export function TaskList({ filter }) {
     );
   }
 
-  // Get filter title
-  let filterTitle = 'All Tasks';
-  if (filter === 'completed') filterTitle = 'Completed Tasks';
-  if (filter === 'active') filterTitle = 'Active Tasks';
-  if (filter === 'due-soon') filterTitle = 'Tasks Due Soon';
-
   // Render task list
   return (
     <Paper>
-      <Box sx={{ p: 2, borderBottom: '1px solid #eee' }}>
-        {/* FIX: Changed Typography component to div and used span for text content */}
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <Typography variant="h6" component="span">
-            {filterTitle}
-          </Typography>
-          <Chip 
-            label={tasks.length} 
-            size="small" 
-            sx={{ ml: 1 }} 
-          />
-        </Box>
-      </Box>
       <List>
-        {tasks.map((task) => (
+        {sortedTasks.map((task) => (
           <React.Fragment key={task._id}>
             <ListItem
               className={`task-priority-${get(task, 'priority', 'routine')} 
@@ -179,13 +248,12 @@ export function TaskList({ filter }) {
                 />
               </ListItemIcon>
               <ListItemText
-                primary={
-                  <Typography component="span">{task.description}</Typography>
-                }
+                primary={task.description}
                 secondary={
-                  <React.Fragment>
-                    {/* FIX: Use Box component instead of Fragment for secondary content */}
-                    <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                  // Fix: Don't use Typography directly, which creates <p> tags
+                  <Box sx={{ mt: 1 }}>
+                    {/* Chips in a horizontal row */}
+                    <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
                       <Chip 
                         size="small" 
                         label={task.status} 
@@ -226,7 +294,7 @@ export function TaskList({ filter }) {
                         </Tooltip>
                       )}
                     </Box>
-                  </React.Fragment>
+                  </Box>
                 }
               />
             </ListItem>
