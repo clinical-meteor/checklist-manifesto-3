@@ -119,13 +119,13 @@ Meteor.publish('tasks.protocols', function() {
 
 
 // Publish tasks for a specific list
-Meteor.publish('tasks.byList', function(listId) {
+Meteor.publish('tasks.byList', async function(listId) {
   check(listId, String);
   
   console.log(`Finding tasks for list: ${listId}`);
 
   // First check if the list exists and user has access
-  const list = ListsCollection.findOneAsync({
+  const list = await ListsCollection.findOneAsync({
     _id: listId,
     isDeleted: { $ne: true }
   });

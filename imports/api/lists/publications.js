@@ -56,13 +56,13 @@ Meteor.publish('lists.all', function() {
 /**
  * Publish a single list by ID
  */
-Meteor.publish('lists.byId', function(listId) {
+Meteor.publish('lists.byId', async function(listId) {
   check(listId, String);
   
   console.log(`Publishing list with ID: ${listId}`);
   
   // Find the list
-  const list = ListsCollection.findOneAsync({
+  const list = await ListsCollection.findOneAsync({
     _id: listId,
     isDeleted: { $ne: true }
   });

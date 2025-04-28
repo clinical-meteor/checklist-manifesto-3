@@ -12,7 +12,8 @@ Meteor.methods({
       priority: Match.Maybe(String),
       dueDate: Match.Maybe(Match.OneOf(Date, null, undefined)),  // Allow null or undefined
       assignedTo: Match.Maybe(String),
-      focusOn: Match.Maybe(String)
+      focusOn: Match.Maybe(String),
+      listId: Match.Maybe(String)  // Add this line to accept listId
     });
 
     if (!this.userId) {
@@ -23,7 +24,7 @@ Meteor.methods({
       // Create a new FHIR Task resource
       const task = {
         resourceType: 'Task',
-        status: 'requested',
+        status: get(options, 'status', 'requested'),
         description: description,
         authoredOn: new Date(),
         lastModified: new Date(),
@@ -41,6 +42,11 @@ Meteor.methods({
           end: options.dueDate
         });
       }
+
+        // Add this section to handle listId
+        if (options.listId) {
+          task.listId = options.listId;
+        }
 
       // Add optional owner field (task assignee) if provided
       if (options.assignedTo) {
