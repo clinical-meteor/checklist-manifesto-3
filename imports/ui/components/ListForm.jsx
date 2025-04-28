@@ -15,21 +15,27 @@ import {
   Switch,
   CircularProgress,
   Typography,
-  Alert
+  Alert,
+  IconButton,
+  Grid
 } from '@mui/material';
 
 // Icons
 import AddIcon from '@mui/icons-material/Add';
 import SaveIcon from '@mui/icons-material/Save';
+import CancelIcon from '@mui/icons-material/Cancel';
+import PublicIcon from '@mui/icons-material/Public';
+import LockIcon from '@mui/icons-material/Lock';
 
 /**
  * ListForm component for creating/editing lists
  * @param {Object} props Component properties
  * @param {Object} props.list Existing list (if editing)
  * @param {Function} props.onSave Callback after successful save
+ * @param {Function} props.onCancel Callback to cancel form
  * @param {Boolean} props.isEdit Whether we're editing an existing list or creating a new one
  */
-export function ListForm({ list, onSave, isEdit = false }) {
+export function ListForm({ list, onSave, onCancel, isEdit = false }) {
   // Form state
   const [title, setTitle] = useState(get(list, 'title', '') || get(list, 'name', ''));
   const [description, setDescription] = useState(get(list, 'description', ''));
@@ -93,6 +99,13 @@ export function ListForm({ list, onSave, isEdit = false }) {
     }
   }
   
+  // Handle cancel button
+  function handleCancel() {
+    if (onCancel) {
+      onCancel();
+    }
+  }
+  
   return (
     <Card>
       <form onSubmit={handleSubmit}>
@@ -117,6 +130,8 @@ export function ListForm({ list, onSave, isEdit = false }) {
             disabled={isSubmitting}
             margin="normal"
             id="listNameInput"
+            autoFocus
+            placeholder="Enter list title..."
           />
           
           <TextField
@@ -129,22 +144,66 @@ export function ListForm({ list, onSave, isEdit = false }) {
             margin="normal"
             multiline
             rows={2}
+            placeholder="Enter a description for this list..."
           />
           
-          <FormControlLabel
-            control={
-              <Switch
-                checked={isPublic}
-                onChange={(e) => setIsPublic(e.target.checked)}
-                disabled={isSubmitting}
-              />
-            }
-            label={isPublic ? "Public (visible to everyone)" : "Private (only visible to you)"}
-            sx={{ mt: 2 }}
-          />
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="subtitle2" gutterBottom>
+              Visibility
+            </Typography>
+            
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={isPublic}
+                      onChange={(e) => setIsPublic(e.target.checked)}
+                      disabled={isSubmitting}
+                    />
+                  }
+                  label={isPublic ? "Public (visible to everyone)" : "Private (only visible to you)"}
+                />
+              </Grid>
+              
+              <Grid item xs={12}>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Button
+                    variant={isPublic ? "contained" : "outlined"}
+                    startIcon={<PublicIcon />}
+                    onClick={() => setIsPublic(true)}
+                    disabled={isSubmitting}
+                    id="publicListButton"
+                    size="small"
+                  >
+                    Public
+                  </Button>
+                  <Button
+                    variant={!isPublic ? "contained" : "outlined"}
+                    startIcon={<LockIcon />}
+                    onClick={() => setIsPublic(false)}
+                    disabled={isSubmitting}
+                    id="privateListButton"
+                    size="small"
+                  >
+                    Private
+                  </Button>
+                </Box>
+              </Grid>
+            </Grid>
+          </Box>
         </CardContent>
         
-        <CardActions sx={{ justifyContent: 'flex-end', p: 2 }}>
+        <CardActions sx={{ justifyContent: 'space-between', p: 2 }}>
+          <Button
+            variant="outlined"
+            onClick={handleCancel}
+            startIcon={<CancelIcon />}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </Button>
+          
           <Button
             variant="contained"
             type="submit"

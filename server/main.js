@@ -15,6 +15,13 @@ import '/imports/api/tasks/protocol-publications.js';
 import '/imports/api/users/methods';
 import '/imports/api/users/publications';
 
+import '/imports/api/lists/methods';
+import '/imports/api/lists/publications';
+
+// Import the sample data methods
+
+// import { initializeSampleData } from './sample-data-methods';
+
 import '/server/integration';
 
 // We'll define the checkFirstRun function here to avoid the import issue
@@ -147,6 +154,11 @@ Meteor.startup(async function() {
 
         console.log('Seed tasks created successfully.');
       }
+      
+      // // Initialize sample data if enabled in settings
+      // if (getSetting('createSampleData', false)) {
+      //   initializeSampleData();
+      // }
     }
   } catch (error) {
     console.error('Error during startup:', error);

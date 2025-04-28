@@ -24,6 +24,15 @@ export function loadEnvironmentSettings() {
   set(Meteor.settings, 'tasks.maxPerUser', parseInt(process.env.MAX_TASKS_PER_USER || '100', 10));
   set(Meteor.settings, 'tasks.dueSoonDays', parseInt(process.env.DUE_SOON_DAYS || '7', 10));
   
+  // Sample data settings
+  set(Meteor.settings, 'createSampleData', process.env.CREATE_SAMPLE_DATA === 'true' || false);
+  set(Meteor.settings, 'createSampleLists', process.env.CREATE_SAMPLE_LISTS === 'true' || false);
+  set(Meteor.settings, 'createSampleProtocols', process.env.CREATE_SAMPLE_PROTOCOLS === 'true' || false);
+  
+  // Lists settings
+  set(Meteor.settings, 'createTestLists', process.env.CREATE_TEST_LISTS === 'true' || false);
+  set(Meteor.settings, 'seedLists', process.env.SEED_LISTS === 'true' || false);
+  
   // API settings
   set(Meteor.settings, 'apiEnabled', process.env.API_ENABLED === 'true' || false);
   if (get(Meteor.settings, 'apiEnabled')) {

@@ -346,5 +346,76 @@ Meteor.methods({
     } catch (error) {
       throw new Meteor.Error('update-count-failed', get(error, 'reason', 'Failed to update incomplete count'));
     }
+  },
+
+
+  async 'lists.get'(listId) {
+    check(listId, String);
+
+    if (!this.userId) {
+      throw new Meteor.Error('not-authorized', 'You must be logged in to view a list');
+    }
+
+    try {
+      // Find the list
+      const list = await ListsCollection.findOneAsync({
+        _id: listId,
+        isDeleted: { $ne: true }
+      });
+
+      if (!list) {
+        throw new Meteor.Error('not-found', 'List not found');
+      }
+
+      // Check if user has access to the list
+      if (!list.public && list.userId !== this.userId) {
+        throw new Meteor.Error('access-denied', 'You do not have permission to view this list');
+      }
+
+      return list;
+    } catch (error) {
+      throw new Meteor.Error('get-list-failed', get(error, 'reason', 'Failed to get list'));
+    }
+  },
+
+  async 'lists.create'(options = {}) {
+    check(options, {
+      title: Match.Maybe(String),
+      description: Match.Maybe(String),
+      public: Match.Maybe(Boolean)
+    });
+
+    if (!this.userId) {
+      throw new Meteor.Error('not-authorized', 'You must be logged in to create a list');
+    }
+
+    try {
+      // Generate a default title if none provided
+      const title = options.title || `List ${new Date().toLocaleDateString()}`;
+      
+      const list = {
+        resourceType: 'List',
+        status: 'active',
+        mode: 'working',
+        title: title,
+        name: title, // For backward compatibility
+        description: options.description || '',
+        incompleteCount: 0,
+        public: options.public || false,
+        createdAt: new Date(),
+        lastModified: new Date(),
+        userId: this.userId,
+        isDeleted: false
+      };
+      
+      const listId = await ListsCollection.insertAsync(list);
+      
+      console.log(`Created new list: ${title} (${listId})`);
+      
+      return listId;
+    } catch (error) {
+      console.error('Error creating list:', error);
+      throw new Meteor.Error('create-list-failed', get(error, 'reason', 'Failed to create list'));
+    }
   }
 });

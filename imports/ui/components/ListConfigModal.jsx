@@ -1,9 +1,7 @@
 // imports/ui/components/ListConfigModal.jsx
 import React, { useState, useEffect } from 'react';
 import { Meteor } from 'meteor/meteor';
-import { useTracker } from 'meteor/react-meteor-data';
 import { get } from 'lodash';
-import { ListsCollection } from '/imports/db/ListsCollection';
 
 // Material UI components
 import {
@@ -36,11 +34,7 @@ import PublicIcon from '@mui/icons-material/Public';
 import LockIcon from '@mui/icons-material/Lock';
 
 /**
- * ListConfigModal component for configuring list settings
- * @param {Object} props Component properties
- * @param {Boolean} props.open Whether the modal is open
- * @param {Function} props.onClose Callback when modal is closed
- * @param {String} props.listId ID of the list to configure
+ * Modal dialog for configuring list settings
  */
 export function ListConfigModal({ open, onClose, listId }) {
   // Component state
@@ -55,37 +49,28 @@ export function ListConfigModal({ open, onClose, listId }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   
-  // Subscribe to the list data
-  const { list } = useTracker(() => {
-    const noData = { list: null };
-    
-    if (!open || !listId) {
-      return noData;
-    }
-    
-    const listSub = Meteor.subscribe('lists.byId', listId);
-    
-    if (!listSub.ready()) {
-      return noData;
-    }
-    
-    return {
-      list: ListsCollection.findOne(listId)
-    };
-  }, [open, listId]);
-  
-  // Initialize form data when list is loaded
+  // Load list data when modal opens
   useEffect(() => {
-    if (list) {
-      setTitle(list.title || list.name || '');
-      setDescription(list.description || '');
-      setIsPublic(!!list.public);
-      setLoading(false);
+    if (open && listId) {
+      setLoading(true);
+      
+      Meteor.call('lists.get', listId, (err, result) => {
+        setLoading(false);
+        
+        if (err) {
+          console.error('Error loading list:', err);
+          setError(get(err, 'reason', 'Failed to load list'));
+        } else if (result) {
+          setTitle(result.title || result.name || '');
+          setDescription(result.description || '');
+          setIsPublic(!!result.public);
+        }
+      });
     }
-  }, [list]);
-  
-  // Reset state when modal is closed
-  function handleClose() {
+  }, [open, listId]);
+
+  // Reset form when dialog closes
+  const handleClose = () => {
     setMode('edit');
     setTabValue(0);
     setTitle('');
@@ -94,46 +79,42 @@ export function ListConfigModal({ open, onClose, listId }) {
     setConfirmTitle('');
     setError('');
     setSuccess('');
-    setLoading(true);
     onClose();
-  }
-  
+  };
+
   // Handle tab change
-  function handleTabChange(event, newValue) {
+  const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
-  }
-  
-  // Toggle public/private status
-  function handleTogglePublic() {
-    setIsPublic(!isPublic);
-  }
-  
+  };
+
   // Switch to delete confirmation mode
-  function handleShowDeleteConfirmation() {
+  const handleShowDeleteConfirmation = () => {
     setMode('delete');
-  }
-  
+  };
+
   // Switch back to edit mode
-  function handleCancelDelete() {
+  const handleCancelDelete = () => {
     setMode('edit');
     setConfirmTitle('');
-  }
-  
+  };
+
   // Handle saving changes
-  function handleSave() {
-    if (!list) return;
+  const handleSave = () => {
+    if (!title.trim()) {
+      setError('Title is required');
+      return;
+    }
     
     setSubmitting(true);
     setError('');
     
     const updates = {
-      title: title,
-      name: title, // For backward compatibility
-      description: description,
+      title: title.trim(),
+      description: description.trim(),
       public: isPublic
     };
     
-    Meteor.call('lists.update', list._id, updates, (err, result) => {
+    Meteor.call('lists.update', listId, updates, (err, result) => {
       setSubmitting(false);
       
       if (err) {
@@ -141,19 +122,14 @@ export function ListConfigModal({ open, onClose, listId }) {
         setError(get(err, 'reason', 'Failed to update list'));
       } else {
         setSuccess('List updated successfully');
-        setTimeout(() => {
-          handleClose();
-        }, 1500);
+        setTimeout(handleClose, 1500);
       }
     });
-  }
-  
+  };
+
   // Handle list deletion
-  function handleDelete() {
-    if (!list) return;
-    
-    // Confirm that the entered name matches the list name
-    if (confirmTitle !== (list.title || list.name)) {
+  const handleDelete = () => {
+    if (confirmTitle !== title) {
       setError('List name does not match');
       return;
     }
@@ -161,7 +137,7 @@ export function ListConfigModal({ open, onClose, listId }) {
     setSubmitting(true);
     setError('');
     
-    Meteor.call('lists.remove', list._id, (err, result) => {
+    Meteor.call('lists.remove', listId, (err, result) => {
       setSubmitting(false);
       
       if (err) {
@@ -169,17 +145,15 @@ export function ListConfigModal({ open, onClose, listId }) {
         setError(get(err, 'reason', 'Failed to delete list'));
       } else {
         setSuccess('List deleted successfully');
-        setTimeout(() => {
-          handleClose();
-        }, 1500);
+        setTimeout(handleClose, 1500);
       }
     });
-  }
-  
+  };
+
   // Render loading state
-  if (loading && !list) {
+  if (loading && !title) {
     return (
-      <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth id="configListModal">
+      <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
         <DialogContent>
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
             <CircularProgress />
@@ -192,7 +166,7 @@ export function ListConfigModal({ open, onClose, listId }) {
   // Render delete confirmation
   if (mode === 'delete') {
     return (
-      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth id="configListModal">
+      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
         <DialogTitle id="configListModalTitle">
           Confirm Deletion
           <IconButton
@@ -222,9 +196,9 @@ export function ListConfigModal({ open, onClose, listId }) {
           </DialogContentText>
           
           <DialogContentText paragraph>
-            To confirm, please type the exact name of the list: 
+            To confirm, please type the exact name of the list:&nbsp;
             <Box component="span" fontWeight="bold">
-              {list?.title || list?.name}
+              {title}
             </Box>
           </DialogContentText>
           
@@ -233,8 +207,8 @@ export function ListConfigModal({ open, onClose, listId }) {
             label="List Name"
             value={confirmTitle}
             onChange={(e) => setConfirmTitle(e.target.value)}
-            error={confirmTitle !== '' && confirmTitle !== (list?.title || list?.name)}
-            helperText={confirmTitle !== '' && confirmTitle !== (list?.title || list?.name) ? "Name doesn't match" : ''}
+            error={confirmTitle !== '' && confirmTitle !== title}
+            helperText={confirmTitle !== '' && confirmTitle !== title ? "Name doesn't match" : ''}
             disabled={submitting}
             margin="normal"
             id="configListModalInput"
@@ -252,7 +226,7 @@ export function ListConfigModal({ open, onClose, listId }) {
           <Button
             color="error"
             onClick={handleDelete}
-            disabled={submitting || confirmTitle !== (list?.title || list?.name)}
+            disabled={submitting || confirmTitle !== title}
             startIcon={submitting ? <CircularProgress size={24} /> : <DeleteIcon />}
             id="confirmRemoveListButton"
           >
@@ -424,3 +398,6 @@ export function ListConfigModal({ open, onClose, listId }) {
       </DialogActions>
     </Dialog>
   );
+}
+
+export default ListConfigModal;

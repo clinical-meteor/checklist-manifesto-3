@@ -12,7 +12,10 @@ import {
   Button,
   TextField,
   Alert,
-  CircularProgress
+  CircularProgress,
+  FormControlLabel,
+  Checkbox,
+  Divider
 } from '@mui/material';
 import { get } from 'lodash';
 
@@ -23,6 +26,9 @@ export default function FirstRunSetupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [createSampleData, setCreateSampleData] = useState(true);
+  const [createSampleLists, setCreateSampleLists] = useState(true);
+  const [createSampleProtocols, setCreateSampleProtocols] = useState(true);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -30,6 +36,7 @@ export default function FirstRunSetupPage() {
   const steps = [
     'Welcome',
     'Create Admin Account',
+    'Sample Data',
     'Complete'
   ];
 
@@ -70,7 +77,12 @@ export default function FirstRunSetupPage() {
     // Create user options
     const userOptions = {
       username,
-      password
+      password,
+      profile: {
+        sampleData: createSampleData,
+        sampleLists: createSampleLists,
+        sampleProtocols: createSampleProtocols
+      }
     };
     
     // Only include email if it's provided and not empty
@@ -86,22 +98,64 @@ export default function FirstRunSetupPage() {
         console.error('Registration error:', err);
         setError(get(err, 'reason', 'Registration failed. Please try again.'));
       } else {
-        // Registration successful, proceed to next step
+        // Registration successful, proceed to sample data step
         handleNext();
         
         // Auto-login with the new account
         Meteor.loginWithPassword({ username }, password, function(loginErr) {
           if (loginErr) {
             console.error('Auto-login error:', loginErr);
+          } else {
+            // Create sample data if selected
+            if (createSampleData) {
+              createInitialData();
+            }
           }
         });
       }
     });
   };
 
+  // Create initial sample data
+  const createInitialData = () => {
+    // Create sample lists if selected
+    if (createSampleLists) {
+      Meteor.call('lists.createSampleData', (error) => {
+        if (error) {
+          console.error('Error creating sample lists:', error);
+        } else {
+          console.log('Sample lists created successfully');
+        }
+      });
+    }
+    
+    // Create sample protocols if selected
+    if (createSampleProtocols) {
+      Meteor.call('protocols.createSampleData', (error) => {
+        if (error) {
+          console.error('Error creating sample protocols:', error);
+        } else {
+          console.log('Sample protocols created successfully');
+        }
+      });
+    }
+  };
+
   // Handle page refresh after setup
   const handleFinish = () => {
     window.location.reload();
+  };
+
+  // Toggle sample data options
+  const handleToggleSampleData = (event) => {
+    const checked = event.target.checked;
+    setCreateSampleData(checked);
+    
+    // If main toggle is off, disable all sub-options
+    if (!checked) {
+      setCreateSampleLists(false);
+      setCreateSampleProtocols(false);
+    }
   };
 
   // Render different content based on the current step
@@ -196,6 +250,44 @@ export default function FirstRunSetupPage() {
               }
             />
             
+            <Box sx={{ mt: 3 }}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={createSampleData}
+                    onChange={handleToggleSampleData}
+                    disabled={isSubmitting}
+                  />
+                }
+                label="Create sample data to get started quickly"
+              />
+              
+              {createSampleData && (
+                <Box sx={{ ml: 4, mt: 1 }}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={createSampleLists}
+                        onChange={(e) => setCreateSampleLists(e.target.checked)}
+                        disabled={isSubmitting || !createSampleData}
+                      />
+                    }
+                    label="Create sample lists"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={createSampleProtocols}
+                        onChange={(e) => setCreateSampleProtocols(e.target.checked)}
+                        disabled={isSubmitting || !createSampleData}
+                      />
+                    }
+                    label="Create sample protocols"
+                  />
+                </Box>
+              )}
+            </Box>
+            
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
               <Button onClick={handleBack}>
                 Back
@@ -215,13 +307,70 @@ export default function FirstRunSetupPage() {
         return (
           <Box>
             <Typography variant="h5" gutterBottom>
+              Setting Up Your Environment
+            </Typography>
+            
+            <Typography variant="body1" paragraph>
+              Your administrator account has been created successfully and you're now logged in.
+            </Typography>
+            
+            {createSampleData ? (
+              <>
+                <Typography variant="body1" paragraph>
+                  We're now creating sample data to help you get started:
+                </Typography>
+                
+                <Box sx={{ ml: 2, my: 2 }}>
+                  {createSampleLists && (
+                    <Alert severity="info" sx={{ mb: 2 }}>
+                      Sample lists are being created...
+                    </Alert>
+                  )}
+                  
+                  {createSampleProtocols && (
+                    <Alert severity="info" sx={{ mb: 2 }}>
+                      Sample protocols are being created...
+                    </Alert>
+                  )}
+                </Box>
+              </>
+            ) : (
+              <Typography variant="body1" paragraph>
+                You've chosen not to create sample data. You'll start with a clean environment.
+              </Typography>
+            )}
+            
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
+              <Button onClick={handleBack} disabled={isSubmitting}>
+                Back
+              </Button>
+              <Button
+                variant="contained"
+                onClick={handleNext}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? <CircularProgress size={24} /> : 'Continue'}
+              </Button>
+            </Box>
+          </Box>
+        );
+      
+      case 3:
+        return (
+          <Box>
+            <Typography variant="h5" gutterBottom>
               Setup Complete!
             </Typography>
             <Typography variant="body1" paragraph>
               Your administrator account has been created successfully and you're now logged in.
             </Typography>
+            {createSampleData && (
+              <Typography variant="body1" paragraph>
+                Sample data has been created to help you get started with using the application.
+              </Typography>
+            )}
             <Typography variant="body1" paragraph>
-              You can now start using Checklist Manifesto to manage your tasks and create additional user accounts if needed.
+              You can now start using Checklist Manifesto to manage your tasks and lists.
             </Typography>
             <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
               <Button

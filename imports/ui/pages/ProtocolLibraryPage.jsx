@@ -219,8 +219,10 @@ export default function ProtocolLibraryPage() {
                   </ListItemIcon>
                   <ListItemText
                     primary={
-                      <Typography variant="subtitle1" className="protocolName">
-                        {protocol.description}
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Typography variant="subtitle1" component="span" className="protocolName">
+                          {protocol.description}
+                        </Typography>
                         {protocol.public && (
                           <Chip 
                             icon={<PublicIcon />} 
@@ -231,7 +233,7 @@ export default function ProtocolLibraryPage() {
                             sx={{ ml: 1 }}
                           />
                         )}
-                      </Typography>
+                      </Box>
                     }
                     secondary={
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 0.5 }}>
@@ -255,7 +257,7 @@ export default function ProtocolLibraryPage() {
                             />
                           )}
                         </Box>
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography variant="caption" color="text.secondary" component="span">
                           Created: {formatDate(protocol.authoredOn)} • 
                           Last modified: {formatDate(protocol.lastModified)}
                         </Typography>
@@ -267,7 +269,8 @@ export default function ProtocolLibraryPage() {
                       variant="body2" 
                       color="text.secondary" 
                       className="protocolCreator"
-                      sx={{ mr: 2, display: { xs: 'none', sm: 'inline' } }}
+                      sx={{ mr: 2, display: { xs: 'none', sm: 'inline' }}}
+                      component="span"
                     >
                       By: {get(protocol, 'requesterName', 'Anonymous')}
                     </Typography>

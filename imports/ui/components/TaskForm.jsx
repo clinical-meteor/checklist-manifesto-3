@@ -30,7 +30,7 @@ import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import AddIcon from '@mui/icons-material/Add';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
-export default function TaskForm() {
+export default function TaskForm({ listId, onSuccess }) {
   // Form state
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState('routine');
@@ -50,7 +50,9 @@ export default function TaskForm() {
     
     // Create the options object with proper date handling
     const options = {
-      priority
+      priority,
+      // Include listId if provided
+      ...(listId && { listId })
     };
     
     // Only add dueDate if it exists
@@ -71,6 +73,11 @@ export default function TaskForm() {
         setPriority('routine');
         setDueDate(null);
         setExpanded(false);
+        
+        // Call success callback if provided
+        if (onSuccess) {
+          onSuccess(result);
+        }
       }
     });
   }
@@ -85,7 +92,7 @@ export default function TaskForm() {
       <form onSubmit={handleSubmit}>
         <CardContent>
           <Typography variant="h6" gutterBottom>
-            Create New Task
+            {listId ? "Add Task to List" : "Create New Task"}
           </Typography>
           
           {error && (
@@ -104,6 +111,10 @@ export default function TaskForm() {
             disabled={isSubmitting}
             margin="normal"
             id="newTaskInput"
+            placeholder="Enter task description..."
+            inputProps={{
+              id: "task-description-field" // For focus targeting
+            }}
           />
           
           <Box sx={{ 

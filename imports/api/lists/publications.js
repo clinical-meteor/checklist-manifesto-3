@@ -1,7 +1,7 @@
 // imports/api/lists/publications.js
 import { Meteor } from 'meteor/meteor';
 import { check } from 'meteor/check';
-import { ListsCollection } from '/imports/db/ListsCollection';
+import { ListsCollection } from '../../db/ListsCollection';
 
 /**
  * Publish lists based on user authentication status

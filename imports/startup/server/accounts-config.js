@@ -35,7 +35,14 @@ Meteor.methods({
     check(options, {
       username: String,
       password: String,
-      email: Match.Maybe(String)
+      email: Match.Maybe(String),
+      profile: Match.Maybe({
+        sampleData: Match.Maybe(Boolean),
+        sampleLists: Match.Maybe(Boolean),
+        sampleProtocols: Match.Maybe(Boolean),
+        // Allow other profile fields
+        $sparse: true
+      })
     });
     
     // Only allow this if no users exist yet
@@ -48,8 +55,19 @@ Meteor.methods({
     const userOptions = {
       username: options.username,
       password: options.password,
-      profile: { role: 'admin', isFirstUser: true }
+      profile: {
+        role: 'admin',
+        isFirstUser: true
+      }
     };
+    
+    // Add any profile options provided
+    if (options.profile) {
+      userOptions.profile = { 
+        ...userOptions.profile, 
+        ...options.profile 
+      };
+    }
     
     // Only add email if it's provided and not empty
     if (options.email && options.email.trim() !== '') {
@@ -61,6 +79,22 @@ Meteor.methods({
     
     // Update first-run status in settings
     Meteor.settings.isFirstRun = false;
+    
+    // Create sample data if requested
+    if (userOptions.profile.sampleData) {
+      try {
+        if (userOptions.profile.sampleLists) {
+          Meteor.call('lists.createSampleData', { userId });
+        }
+        
+        if (userOptions.profile.sampleProtocols) {
+          Meteor.call('protocols.createSampleData', { userId });
+        }
+      } catch (error) {
+        console.error('Error creating sample data:', error);
+        // Don't fail the user creation if sample data creation fails
+      }
+    }
     
     return userId;
   }

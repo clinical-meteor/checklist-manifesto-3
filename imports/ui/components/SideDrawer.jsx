@@ -29,6 +29,7 @@ import ImportExportIcon from '@mui/icons-material/ImportExport';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import InfoIcon from '@mui/icons-material/Info';
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
+import ListIcon from '@mui/icons-material/List'; // Add List icon
 
 const drawerWidth = 240;
 
@@ -90,6 +91,20 @@ export default function SideDrawer({ open, onClose, user }) {
               <HomeIcon />
             </ListItemIcon>
             <ListItemText primary="Home" />
+          </ListItemButton>
+        </ListItem>
+        
+        {/* Add Lists link */}
+        <ListItem disablePadding>
+          <ListItemButton
+            selected={isActive('/lists')}
+            onClick={() => handleNavigate('/lists')}
+            id="listsLink"
+          >
+            <ListItemIcon>
+              <ListIcon />
+            </ListItemIcon>
+            <ListItemText primary="My Lists" />
           </ListItemButton>
         </ListItem>
         
@@ -171,13 +186,13 @@ export default function SideDrawer({ open, onClose, user }) {
           <>
             <ListItem disablePadding>
               <ListItemButton
-                onClick={() => handleNavigate('/')}
+                onClick={() => handleNavigate('/lists')}
                 id="newListButton"
               >
                 <ListItemIcon>
                   <AddCircleOutlineIcon />
                 </ListItemIcon>
-                <ListItemText primary="New List" />
+                <ListItemText primary="Manage Lists" />
               </ListItemButton>
             </ListItem>
             

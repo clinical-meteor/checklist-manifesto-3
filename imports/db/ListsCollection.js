@@ -110,4 +110,43 @@ export const createNewList = function(options = {}) {
   return ListsCollection.insert(list);
 };
 
+// Create seed data if needed (for development)
+if (Meteor.isServer) {
+  Meteor.startup(function() {
+    // Check if we should seed some lists (for development)
+    if (Meteor.settings.seedLists && ListsCollection.find().count() === 0) {
+      console.log('Creating seed lists...');
+      
+      // Find an admin user to be the owner of seed lists
+      const adminUser = Meteor.users.findOne({ 'profile.role': 'admin' });
+      if (!adminUser) {
+        console.log('No admin user found, skipping list seeding');
+        return;
+      }
+      
+      // Create some example lists
+      [
+        { title: 'Shopping List', description: 'Things to buy at the store', public: true },
+        { title: 'Work Tasks', description: 'Tasks for the office', public: false },
+        { title: 'Home Projects', description: 'Things to do around the house', public: true }
+      ].forEach(listData => {
+        const listId = ListsCollection.insert({
+          ...listData,
+          resourceType: 'List',
+          status: 'active',
+          mode: 'working',
+          name: listData.title, // For backward compatibility
+          incompleteCount: 0,
+          createdAt: new Date(),
+          lastModified: new Date(),
+          userId: adminUser._id,
+          isDeleted: false
+        });
+        
+        console.log(`Created seed list: ${listData.title} (${listId})`);
+      });
+    }
+  });
+}
+
 export default ListsCollection;
