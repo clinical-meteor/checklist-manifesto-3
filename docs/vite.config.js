@@ -4,9 +4,9 @@ import react from '@vitejs/plugin-react';
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: '/checklist-manifesto/', // This should match your GitHub repository name
+  base: '/checklist-manifesto-3/', // This should match your GitHub repository name
   build: {
-    outDir: 'dist',
+    outDir: 'docs',
     emptyOutDir: true,
   },
   publicDir: 'public',

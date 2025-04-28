@@ -1,4 +1,4 @@
-// imports/ui/components/TaskDetails.jsx
+// imports/ui/components/TaskDetails.jsx - Fixed version
 import React, { useState, useEffect } from 'react';
 import { Meteor } from 'meteor/meteor';
 import { useTracker } from 'meteor/react-meteor-data';
@@ -65,12 +65,6 @@ function TaskDetails({ taskId, open, onClose, isProtocol = false }) {
   const [isPublic, setIsPublic] = useState(false);
   const [protocolDialogOpen, setProtocolDialogOpen] = useState(false);
 
-  useEffect(() => {
-    if (task) {
-      setIsPublic(!!task.public);
-    }
-  }, [task]);
-
   // Fetch task data
   const { task, isLoading, currentUser } = useTracker(function() {
     const noData = { task: null, isLoading: false, currentUser: null };
@@ -93,20 +87,23 @@ function TaskDetails({ taskId, open, onClose, isProtocol = false }) {
     const taskData = TasksCollection.findOne(taskId);
     const user = Meteor.user();
     
-    // Initialize form state when task data is loaded
-    if (taskData && !isEditing) {
-      setDescription(taskData.description || '');
-      setStatus(taskData.status || '');
-      setPriority(taskData.priority || 'routine');
-      setDueDate(get(taskData, 'executionPeriod.end') ? moment(get(taskData, 'executionPeriod.end')) : null);
-    }
-    
     return {
       task: taskData,
       isLoading: false,
       currentUser: user
     };
-  });
+  }, [taskId, isProtocol]);
+
+  // Initialize form state when task data is loaded
+  useEffect(() => {
+    if (task && !isEditing) {
+      setDescription(task.description || '');
+      setStatus(task.status || '');
+      setPriority(task.priority || 'routine');
+      setDueDate(get(task, 'executionPeriod.end') ? moment(get(task, 'executionPeriod.end')) : null);
+      setIsPublic(!!task.public);
+    }
+  }, [task, isEditing]);
 
   // Reset form when dialog closes
   function handleClose() {
@@ -329,49 +326,11 @@ function TaskDetails({ taskId, open, onClose, isProtocol = false }) {
           <Typography>Task not found or you don't have permission to view it.</Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleClose}>Close</Button> 
-          <Button
-            startIcon={<SaveAltIcon />}
-            onClick={() => setProtocolDialogOpen(true)}
-            disabled={!canEditTask()}
-          >
-            Save as Protocol
-          </Button>
-          {canEditTask() && (
-            <Button
-              color={isPublic ? "primary" : "default"}
-              startIcon={<PublicIcon />}
-              onClick={handleTogglePublic}
-              sx={{ mr: 1 }}
-            >
-              {isPublic ? "Public Protocol" : "Make Public"}
-            </Button>
-          )}
-          {isProtocol ? (
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleCloneProtocol}
-              disabled={!currentUser}
-            >
-              Clone Protocol
-            </Button>
-          ) : (
-            // Existing task buttons
-            <Button
-              variant="contained"
-              onClick={handleSaveTask}
-              startIcon={<SaveIcon />}
-              disabled={isSubmitting || !canEditTask()}
-            >
-              Save Changes
-            </Button>
-          )}        
+          <Button onClick={handleClose}>Close</Button>
         </DialogActions>
       </Dialog>
     );
   }
-
 
   // Render task details
   return (
@@ -449,9 +408,9 @@ function TaskDetails({ taskId, open, onClose, isProtocol = false }) {
                     label="Due Date"
                     value={dueDate}
                     onChange={setDueDate}
-                    renderInput={(params) => <TextField {...params} fullWidth margin="normal" />}
+                    slotProps={{ textField: { fullWidth: true, margin: "normal" } }}
                     disabled={isSubmitting}
-                    minDate={moment()}
+                    minDateTime={moment()}
                   />
                 </LocalizationProvider>
               </Grid>
@@ -622,7 +581,38 @@ function TaskDetails({ taskId, open, onClose, isProtocol = false }) {
               Close
             </Button>
             
-            {canEditTask() && (
+            {canEditTask() && !isProtocol && (
+              <Button
+                startIcon={<SaveAltIcon />}
+                onClick={() => setProtocolDialogOpen(true)}
+              >
+                Save as Protocol
+              </Button>
+            )}
+            
+            {canEditTask() && isProtocol && (
+              <Button
+                color={isPublic ? "primary" : "default"}
+                startIcon={<PublicIcon />}
+                onClick={handleTogglePublic}
+                sx={{ mr: 1 }}
+              >
+                {isPublic ? "Public Protocol" : "Make Public"}
+              </Button>
+            )}
+            
+            {isProtocol && (
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleCloneProtocol}
+                disabled={!currentUser}
+              >
+                Clone Protocol
+              </Button>
+            )}
+            
+            {canEditTask() && !isProtocol && (
               <Button
                 variant="contained"
                 startIcon={<EditIcon />}
@@ -634,6 +624,7 @@ function TaskDetails({ taskId, open, onClose, isProtocol = false }) {
           </>
         )}
       </DialogActions>
+      
       {protocolDialogOpen && (
         <ModifyProtocolDialog
           open={protocolDialogOpen}
