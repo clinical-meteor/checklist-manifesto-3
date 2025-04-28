@@ -289,7 +289,7 @@ export function TaskDetails({ taskId, open, onClose }) {
           <Typography>Task not found or you don't have permission to view it.</Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleClose}>Close</Button>
+          <Button onClick={handleClose}>Close</Button> 
           {canEditTask() && (
             <Button
               color={isPublic ? "primary" : "default"}
@@ -300,6 +300,8 @@ export function TaskDetails({ taskId, open, onClose }) {
               {isPublic ? "Public Protocol" : "Make Public"}
             </Button>
           )}
+
+
         </DialogActions>
       </Dialog>
     );

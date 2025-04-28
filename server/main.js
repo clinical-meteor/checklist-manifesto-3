@@ -12,6 +12,8 @@ import '/imports/api/tasks/publications';
 import '/imports/api/users/methods';
 import '/imports/api/users/publications';
 
+import '/server/integration';
+
 // We'll define the checkFirstRun function here to avoid the import issue
 async function checkFirstRun() {
   try {

@@ -243,7 +243,7 @@ Meteor.methods({
    * @param {Object} taskResource - A FHIR Task resource
    * @returns {String} The ID of the imported task
    */
-  'tasks.import'(taskResource) {
+  async 'tasks.import'(taskResource) {
     // Make sure user is logged in
     if (!this.userId) {
       throw new Meteor.Error('Not authorized.', 'You must be logged in to import tasks.');
@@ -370,7 +370,7 @@ Meteor.methods({
       throw new Meteor.Error('import-failed', `Failed to import tasks: ${error.message}`);
     }
   },
-  'tasks.clone': function(taskId) {
+  async 'tasks.clone'(taskId) {
     check(taskId, String);
     
     // Must be logged in to clone
@@ -400,22 +400,9 @@ Meteor.methods({
         clonedFrom: taskId  // Store original source
       };
       
-      // Copy any notes if present
-      if (get(originalTask, 'note')) {
-        newTask.note = [{
-          text: `Cloned from protocol: ${originalTask.description}`,
-          time: new Date(),
-          authorId: this.userId
-        }];
-      }
-      
       // Copy execution period if present
       if (get(originalTask, 'executionPeriod')) {
         newTask.executionPeriod = {};
-        
-        if (get(originalTask, 'executionPeriod.start')) {
-          newTask.executionPeriod.start = new Date();
-        }
         
         if (get(originalTask, 'executionPeriod.end')) {
           // Set due date a week from now by default
@@ -426,7 +413,7 @@ Meteor.methods({
       }
       
       // Insert the new task
-      const taskId = TasksCollection.insert(newTask);
+      const taskId = await TasksCollection.insertAsync(newTask);
       return taskId;
     } catch (error) {
       throw new Meteor.Error('clone-failed', `Failed to clone protocol: ${error.message}`);
@@ -434,7 +421,7 @@ Meteor.methods({
   },
 
   // Toggle a task's public status (make it available in protocol library)
-  'tasks.togglePublic': function(taskId, makePublic) {
+  async 'tasks.togglePublic'(taskId, makePublic) {
     check(taskId, String);
     check(makePublic, Boolean);
     
@@ -453,7 +440,7 @@ Meteor.methods({
       throw new Meteor.Error('not-authorized', 'Only the creator can change a task\'s visibility.');
     }
     
-    return TasksCollection.update(taskId, {
+    return await TasksCollection.updateAsync(taskId, {
       $set: { 
         public: makePublic,
         lastModified: new Date()
