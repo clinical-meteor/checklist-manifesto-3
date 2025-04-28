@@ -417,5 +417,111 @@ Meteor.methods({
       console.error('Error creating list:', error);
       throw new Meteor.Error('create-list-failed', get(error, 'reason', 'Failed to create list'));
     }
+  },
+  async 'lists.createSampleData'(options = {}) {
+    // Don't run if not on server
+    if (!Meteor.isServer) return;
+    
+    // Only logged in users can create sample data
+    if (!this.userId) {
+      throw new Meteor.Error('not-authorized', 'You must be logged in to create sample data');
+    }
+    
+    console.log('Creating sample lists for user:', this.userId);
+    
+    // Define sample lists
+    const sampleLists = [
+      {
+        title: 'Shopping List',
+        description: 'Things to buy at the store',
+        public: true,
+        tasks: [
+          { description: 'Milk', priority: 'routine' },
+          { description: 'Bread', priority: 'routine' },
+          { description: 'Eggs', priority: 'routine' },
+          { description: 'Apples', priority: 'routine', status: 'completed' }
+        ]
+      },
+      {
+        title: 'Work Tasks',
+        description: 'Things to do at the office',
+        public: false,
+        tasks: [
+          { description: 'Finish report', priority: 'urgent' },
+          { description: 'Email client', priority: 'asap' },
+          { description: 'Schedule meeting', priority: 'routine' }
+        ]
+      },
+      {
+        title: 'Home Projects',
+        description: 'Things to do around the house',
+        public: true,
+        tasks: [
+          { description: 'Fix leaky faucet', priority: 'urgent' },
+          { description: 'Mow the lawn', priority: 'routine' },
+          { description: 'Clean gutters', priority: 'routine' },
+          { description: 'Paint bedroom', priority: 'routine' }
+        ]
+      }
+    ];
+    
+    // Results to track created lists
+    const results = [];
+    
+    // Create each list
+    for (const list of sampleLists) {
+      try {
+        // Create the list
+        const listId = await ListsCollection.insertAsync({
+          resourceType: 'List',
+          status: 'active',
+          mode: 'working',
+          title: list.title,
+          name: list.title, // For backward compatibility
+          description: list.description,
+          incompleteCount: list.tasks.filter(t => t.status !== 'completed').length,
+          public: list.public,
+          createdAt: new Date(),
+          lastModified: new Date(),
+          userId: this.userId,
+          isDeleted: false
+        });
+        
+        console.log(`Created sample list: ${list.title} (${listId})`);
+        
+        // Create tasks for this list
+        const taskIds = [];
+        for (const [index, task] of list.tasks.entries()) {
+          const taskId = await TasksCollection.insertAsync({
+            resourceType: 'Task',
+            status: task.status || 'requested',
+            description: task.description,
+            priority: task.priority || 'routine',
+            authoredOn: new Date(),
+            lastModified: new Date(),
+            requester: this.userId,
+            listId: listId,
+            isDeleted: false,
+            ordinal: index
+          });
+          
+          taskIds.push(taskId);
+          console.log(`Created sample task: ${task.description} (${taskId})`);
+        }
+        
+        results.push({
+          listId,
+          title: list.title,
+          taskCount: taskIds.length
+        });
+      } catch (error) {
+        console.error(`Error creating sample list "${list.title}":`, error);
+      }
+    }
+    
+    return {
+      success: true,
+      lists: results
+    };
   }
 });

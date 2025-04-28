@@ -36,13 +36,7 @@ Meteor.methods({
       username: String,
       password: String,
       email: Match.Maybe(String),
-      profile: Match.Maybe({
-        sampleData: Match.Maybe(Boolean),
-        sampleLists: Match.Maybe(Boolean),
-        sampleProtocols: Match.Maybe(Boolean),
-        // Allow other profile fields
-        $sparse: true
-      })
+      profile: Match.Maybe(Object) // Change this line - remove the nested pattern
     });
     
     // Only allow this if no users exist yet
@@ -79,22 +73,6 @@ Meteor.methods({
     
     // Update first-run status in settings
     Meteor.settings.isFirstRun = false;
-    
-    // Create sample data if requested
-    if (userOptions.profile.sampleData) {
-      try {
-        if (userOptions.profile.sampleLists) {
-          Meteor.call('lists.createSampleData', { userId });
-        }
-        
-        if (userOptions.profile.sampleProtocols) {
-          Meteor.call('protocols.createSampleData', { userId });
-        }
-      } catch (error) {
-        console.error('Error creating sample data:', error);
-        // Don't fail the user creation if sample data creation fails
-      }
-    }
     
     return userId;
   }

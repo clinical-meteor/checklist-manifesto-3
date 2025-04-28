@@ -190,13 +190,13 @@ export default function FirstRunSetupPage() {
             <Typography variant="h5" gutterBottom>
               Create Admin Account
             </Typography>
-            
+              
             {error && (
               <Alert severity="error" sx={{ mb: 3 }}>
                 {error}
               </Alert>
             )}
-            
+              
             <TextField
               label="Username"
               type="text"
@@ -208,7 +208,7 @@ export default function FirstRunSetupPage() {
               required
               disabled={isSubmitting}
             />
-            
+              
             <TextField
               label="Email Address (Optional)"
               type="email"
@@ -219,7 +219,7 @@ export default function FirstRunSetupPage() {
               margin="normal"
               disabled={isSubmitting}
             />
-            
+              
             <TextField
               label="Password"
               type="password"
@@ -231,7 +231,7 @@ export default function FirstRunSetupPage() {
               required
               disabled={isSubmitting}
             />
-            
+              
             <TextField
               label="Confirm Password"
               type="password"
@@ -249,45 +249,9 @@ export default function FirstRunSetupPage() {
                   : ''
               }
             />
-            
-            <Box sx={{ mt: 3 }}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={createSampleData}
-                    onChange={handleToggleSampleData}
-                    disabled={isSubmitting}
-                  />
-                }
-                label="Create sample data to get started quickly"
-              />
               
-              {createSampleData && (
-                <Box sx={{ ml: 4, mt: 1 }}>
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={createSampleLists}
-                        onChange={(e) => setCreateSampleLists(e.target.checked)}
-                        disabled={isSubmitting || !createSampleData}
-                      />
-                    }
-                    label="Create sample lists"
-                  />
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={createSampleProtocols}
-                        onChange={(e) => setCreateSampleProtocols(e.target.checked)}
-                        disabled={isSubmitting || !createSampleData}
-                      />
-                    }
-                    label="Create sample protocols"
-                  />
-                </Box>
-              )}
-            </Box>
-            
+            {/* Remove the sample data checkboxes from here */}
+              
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
               <Button onClick={handleBack}>
                 Back
@@ -302,59 +266,76 @@ export default function FirstRunSetupPage() {
             </Box>
           </Box>
         );
-      
+        
       case 2:
-        return (
-          <Box>
-            <Typography variant="h5" gutterBottom>
-              Setting Up Your Environment
-            </Typography>
-            
-            <Typography variant="body1" paragraph>
-              Your administrator account has been created successfully and you're now logged in.
-            </Typography>
-            
-            {createSampleData ? (
-              <>
-                <Typography variant="body1" paragraph>
-                  We're now creating sample data to help you get started:
+          return (
+            <Box>
+              <Typography variant="h5" gutterBottom>
+                Sample Data
+              </Typography>
+                
+              <Typography variant="body1" paragraph>
+                Your administrator account has been created successfully and you're now logged in.
+              </Typography>
+                
+              {/* Add the sample data checkboxes here */}
+              <Box sx={{ mt: 3, p: 3, bgcolor: 'background.paper', borderRadius: 1 }}>
+                <Typography variant="subtitle1" gutterBottom fontWeight="medium">
+                  Would you like to create sample data to get started quickly?
                 </Typography>
                 
-                <Box sx={{ ml: 2, my: 2 }}>
-                  {createSampleLists && (
-                    <Alert severity="info" sx={{ mb: 2 }}>
-                      Sample lists are being created...
-                    </Alert>
-                  )}
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={createSampleData}
+                      onChange={handleToggleSampleData}
+                      disabled={isSubmitting}
+                    />
+                  }
+                  label="Create sample data for a better demo experience"
+                />
                   
-                  {createSampleProtocols && (
-                    <Alert severity="info" sx={{ mb: 2 }}>
-                      Sample protocols are being created...
-                    </Alert>
-                  )}
-                </Box>
-              </>
-            ) : (
-              <Typography variant="body1" paragraph>
-                You've chosen not to create sample data. You'll start with a clean environment.
-              </Typography>
-            )}
-            
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
-              <Button onClick={handleBack} disabled={isSubmitting}>
-                Back
-              </Button>
-              <Button
-                variant="contained"
-                onClick={handleNext}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? <CircularProgress size={24} /> : 'Continue'}
-              </Button>
+                {createSampleData && (
+                  <Box sx={{ ml: 4, mt: 2 }}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={createSampleLists}
+                          onChange={(e) => setCreateSampleLists(e.target.checked)}
+                          disabled={isSubmitting || !createSampleData}
+                        />
+                      }
+                      label="Create sample task lists"
+                    />
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={createSampleProtocols}
+                          onChange={(e) => setCreateSampleProtocols(e.target.checked)}
+                          disabled={isSubmitting || !createSampleData}
+                        />
+                      }
+                      label="Create sample protocol templates"
+                    />
+                  </Box>
+                )}
+              </Box>
+    
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
+                <Button onClick={handleBack} disabled={isSubmitting}>
+                  Back
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={handleNext}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? <CircularProgress size={24} /> : 'Continue'}
+                </Button>
+              </Box>
             </Box>
-          </Box>
-        );
-      
+          );
+
       case 3:
         return (
           <Box>

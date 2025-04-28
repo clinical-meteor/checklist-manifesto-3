@@ -1,5 +1,5 @@
 // imports/ui/App.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Meteor } from 'meteor/meteor';
 import { useTracker } from 'meteor/react-meteor-data';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
@@ -21,22 +21,22 @@ import ListsPage from './pages/ListsPage';          // Import ListsPage
 import ListDetailPage from './pages/ListDetailPage'; // Import ListDetailPage
 
 export function App() {
-  const { user, userLoading, isFirstRun } = useTracker(() => {
-    const userSub = Meteor.subscribe('userData');
-    
-    // Check if this is the first run (no users exist)
-    let firstRunCheck = false;
-    
+  const [isFirstRun, setIsFirstRun] = useState(false);
+  
+  // Check first run status on mount
+  useEffect(() => {
     Meteor.call('accounts.isFirstRun', (err, result) => {
       if (!err) {
-        firstRunCheck = result;
+        setIsFirstRun(result);
       }
     });
-    
+  }, []);
+  
+  const { user, userLoading } = useTracker(() => {
+    const userSub = Meteor.subscribe('userData');
     return {
       user: Meteor.user(),
-      userLoading: !userSub.ready(),
-      isFirstRun: firstRunCheck
+      userLoading: !userSub.ready()
     };
   });
 

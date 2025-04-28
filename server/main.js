@@ -45,6 +45,47 @@ async function checkFirstRun() {
   }
 }
 
+// server/main.js - Add this function or fix existing one
+async function initializeDefaultProtocols() {
+  try {
+    // Check if we need to load default protocols based on settings
+    const shouldLoadProtocols = getSetting('loadDefaultProtocols', true);
+    
+    if (shouldLoadProtocols) {
+      console.log('Checking if default protocols need to be created...');
+      
+      // Find an admin user or any user to be the creator of protocols
+      const adminUser = await Meteor.users.findOneAsync({ 'profile.role': 'admin' });
+      let userId = adminUser ? adminUser._id : null;
+      
+      if (!userId) {
+        // If no admin, use any available user
+        const anyUser = await Meteor.users.findOneAsync();
+        userId = anyUser ? anyUser._id : null;
+      }
+      
+      // Count existing protocols
+      const protocolCount = await TasksCollection.countDocumentsAsync({ 
+        isProtocol: true,
+        public: true
+      });
+      
+      if (protocolCount === 0 && userId) {
+        console.log('No protocols found, initializing default protocols...');
+        // Import the utility function and create protocols
+        const { initializeProtocols } = await import('/imports/utils/DefaultProtocols');
+        await initializeProtocols(userId, true); // Force creation with the second parameter
+        console.log('Default protocols initialized successfully');
+      } else {
+        console.log(`Found ${protocolCount} existing protocols, skipping initialization`);
+      }
+    }
+  } catch (error) {
+    console.error('Error initializing default protocols:', error);
+  }
+}
+
+
 // Function to create seed tasks (unchanged)
 async function insertTask(description, userId, options = {}) {
   // Existing implementation remains the same
