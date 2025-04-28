@@ -6,8 +6,8 @@ export default defineConfig({
   plugins: [react()],
   base: '/checklist-manifesto-3/', // This should match your GitHub repository name
   build: {
-    outDir: 'docs',
-    emptyOutDir: true,
+    outDir: '../docs',
+    emptyOutDir: true
   },
-  publicDir: 'public',
+  publicDir: 'public'
 });
