@@ -43,7 +43,17 @@ const taskSchema = {
   executionPeriod: { type: Object, optional: true },
   'executionPeriod.start': { type: Date, optional: true },
   'executionPeriod.end': { type: Date, optional: true },
-  isDeleted: { type: Boolean, defaultValue: false }
+  isDeleted: { type: Boolean, defaultValue: false },
+  
+  // Custom fields for app functionality
+  listId: { type: String, optional: true }, // Reference to the list this task belongs to
+  public: { type: Boolean, optional: true }, // Whether this task is publicly viewable
+  ordinal: { type: Number, optional: true }, // Order within the list
+  partOf: { type: Object, optional: true },
+  'partOf.reference': { type: String, optional: true },
+  'partOf.display': { type: String, optional: true },
+  isTemplate: { type: Boolean, optional: true }, // Whether this is a protocol template
+  source: { type: String, optional: true } // Reference to original task if cloned
 };
 
 // Initialize collection with schema
@@ -56,6 +66,11 @@ if (Meteor.isServer) {
     TasksCollection.createIndex({ isDeleted: 1 });
     TasksCollection.createIndex({ priority: 1 });
     TasksCollection.createIndex({ 'executionPeriod.end': 1 });
+    TasksCollection.createIndex({ listId: 1 });
+    TasksCollection.createIndex({ public: 1 });
+    TasksCollection.createIndex({ ordinal: 1 });
+    TasksCollection.createIndex({ 'partOf.reference': 1 });
+    TasksCollection.createIndex({ isTemplate: 1 });
   });
 }
 

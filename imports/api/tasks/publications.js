@@ -115,3 +115,28 @@ Meteor.publish('tasks.protocols', function() {
     sort: { lastModified: -1 }
   });
 });
+
+
+// Publish tasks for a specific list
+Meteor.publish('tasks.byList', function(listId) {
+  check(listId, String);
+  
+  // Find the list to determine if it's public
+  const list = ListsCollection.findOne(listId);
+  
+  if (!list) {
+    return this.ready();
+  }
+  
+  // If list is private, check if current user is the owner
+  if (!list.public && (!this.userId || list.userId !== this.userId)) {
+    return this.ready();
+  }
+  
+  return TasksCollection.find({
+    listId: listId,
+    isDeleted: { $ne: true }
+  }, {
+    sort: { ordinal: 1 }
+  });
+});
