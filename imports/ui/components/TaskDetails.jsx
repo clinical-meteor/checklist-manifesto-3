@@ -44,9 +44,12 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import AddCommentIcon from '@mui/icons-material/AddComment';
 
 import ModifyProtocolDialog from './ModifyProtocolDialog';
+import SaveAltIcon from '@mui/icons-material/SaveAlt';
+import PublicIcon from '@mui/icons-material/Public';
+
 import { useNavigate } from 'react-router-dom';
 
-export function TaskDetails({ taskId, open, onClose }) {
+export function TaskDetails({ taskId, open, onClose, isProtocol = false }) {
   // State for the form
   const [isEditing, setIsEditing] = useState(false);
   const [description, setDescription] = useState('');
@@ -72,7 +75,11 @@ export function TaskDetails({ taskId, open, onClose }) {
       return noData;
     }
 
-    const taskSub = Meteor.subscribe('tasks.byId', taskId);
+    // Choose the appropriate subscription based on isProtocol flag
+    const taskSub = isProtocol ? 
+      Meteor.subscribe('protocols.single', taskId) : 
+      Meteor.subscribe('tasks.byId', taskId);
+    
     const userSub = Meteor.subscribe('userData');
     
     if (!taskSub.ready() || !userSub.ready()) {
@@ -138,6 +145,32 @@ export function TaskDetails({ taskId, open, onClose }) {
     }
     
     setIsEditing(false);
+  }
+
+  async function handleCloneProtocol() {
+    if (!task) return;
+    
+    try {
+      setIsSubmitting(true);
+      const result = await new Promise((resolve, reject) => {
+        Meteor.call('protocols.createTaskFromProtocol', task._id, (err, result) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(result);
+          }
+        });
+      });
+      
+      // Redirect to the new task
+      handleClose();
+      navigate(`/task/${result}`);
+    } catch (error) {
+      console.error('Error cloning protocol:', error);
+      alert(`Failed to clone protocol: ${error.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   // Save task changes
@@ -310,6 +343,26 @@ export function TaskDetails({ taskId, open, onClose }) {
               {isPublic ? "Public Protocol" : "Make Public"}
             </Button>
           )}
+          {isProtocol ? (
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleCloneProtocol}
+              disabled={!currentUser}
+            >
+              Clone Protocol
+            </Button>
+          ) : (
+            // Existing task buttons
+            <Button
+              variant="contained"
+              onClick={handleSaveTask}
+              startIcon={<SaveIcon />}
+              disabled={isSubmitting || !canEditTask()}
+            >
+              Save Changes
+            </Button>
+          )}        
 
 
         </DialogActions>
@@ -317,17 +370,7 @@ export function TaskDetails({ taskId, open, onClose }) {
     );
   }
 
-  {protocolDialogOpen && (
-    <ModifyProtocolDialog
-      open={protocolDialogOpen}
-      onClose={() => setProtocolDialogOpen(false)}
-      taskId={task._id}
-      onSave={(protocolId) => {
-        // Show success message or redirect
-        setProtocolDialogOpen(false);
-      }}
-    />
-  )}
+
   // Render task details
   return (
     <Dialog open={open} onClose={handleClose} fullWidth maxWidth="md">
@@ -589,6 +632,20 @@ export function TaskDetails({ taskId, open, onClose }) {
           </>
         )}
       </DialogActions>
+      {protocolDialogOpen && (
+        <ModifyProtocolDialog
+          open={protocolDialogOpen}
+          onClose={() => setProtocolDialogOpen(false)}
+          taskId={task._id}
+          onSave={(protocolId) => {
+            // Show success message or redirect
+            setProtocolDialogOpen(false);
+          }}
+        />
+      )}
     </Dialog>
   );
 }
+
+
+

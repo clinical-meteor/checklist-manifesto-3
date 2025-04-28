@@ -28,38 +28,41 @@ import TaskDetails from '../components/TaskDetails';
 /**
  * Task details page to view and edit a specific task
  */
-export default function TaskDetailsPage() {
+export default function TaskDetailsPage({ isProtocol = false }) {
   const { taskId } = useParams();
   const navigate = useNavigate();
   const [open, setOpen] = useState(true);
   
   // Track the task data
   const { task, isLoading } = useTracker(() => {
-    const subscription = Meteor.subscribe('tasks.byId', taskId);
+    // Use the appropriate subscription based on whether this is a task or protocol
+    const subscription = isProtocol ? 
+      Meteor.subscribe('protocols.single', taskId) : 
+      Meteor.subscribe('tasks.byId', taskId);
     
     return {
       isLoading: !subscription.ready(),
       task: TasksCollection.findOne(taskId)
     };
-  }, [taskId]);
+  }, [taskId, isProtocol]);
   
   // Navigate back to the task list
   const handleBack = () => {
-    navigate('/');
+    navigate(isProtocol ? '/protocols' : '/');
   };
   
   // Handle dialog close
   const handleClose = () => {
     setOpen(false);
-    navigate('/');
+    navigate(isProtocol ? '/protocols' : '/');
   };
   
   // If task not found after loading is complete, navigate back to task list
   useEffect(() => {
     if (!isLoading && !task) {
-      navigate('/');
+      navigate(isProtocol ? '/protocols' : '/');
     }
-  }, [isLoading, task, navigate]);
+  }, [isLoading, task, navigate, isProtocol]);
 
   if (isLoading) {
     return (
@@ -81,7 +84,7 @@ export default function TaskDetailsPage() {
           onClick={handleBack}
           sx={{ mb: 2 }}
         >
-          Back to Tasks
+          Back to {isProtocol ? 'Protocols' : 'Tasks'}
         </Button>
         
         <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 2 }}>
@@ -90,13 +93,15 @@ export default function TaskDetailsPage() {
             onClick={handleBack}
             sx={{ cursor: 'pointer' }}
           >
-            Tasks
+            {isProtocol ? 'Protocols' : 'Tasks'}
           </Link>
-          <Typography color="text.primary">Task Details</Typography>
+          <Typography color="text.primary">
+            {isProtocol ? 'Protocol Details' : 'Task Details'}
+          </Typography>
         </Breadcrumbs>
         
         <Typography variant="h4" component="h1" gutterBottom>
-          Task Details
+          {isProtocol ? 'Protocol Details' : 'Task Details'}
         </Typography>
       </Box>
       
@@ -104,7 +109,8 @@ export default function TaskDetailsPage() {
         <TaskDetails 
           taskId={taskId} 
           open={open} 
-          onClose={handleClose} 
+          onClose={handleClose}
+          isProtocol={isProtocol} 
         />
       </Paper>
     </Container>

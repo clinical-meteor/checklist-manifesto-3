@@ -1,4 +1,4 @@
-// imports/ui/pages/TaskListPage.jsx
+// in imports/ui/pages/TaskListPage.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Meteor } from 'meteor/meteor';
@@ -13,10 +13,6 @@ import TaskForm from '../components/TaskForm';
 import { TaskList } from '../components/TaskList';
 import { TaskFilter } from '../components/TaskFilter';
 
-/**
- * Task list page that displays a list of tasks with filtering options
- * and form for adding new tasks
- */
 export default function TaskListPage() {
   // Get filter from URL parameters
   const { filter: urlFilter } = useParams();
@@ -25,12 +21,13 @@ export default function TaskListPage() {
   const [filter, setFilter] = useState(urlFilter || 'all');
   const [sort, setSort] = useState('lastModified');
   
+  // Update filter when URL changes
   useEffect(() => {
     if (urlFilter) {
       setFilter(urlFilter);
     }
   }, [urlFilter]);
-
+  
   // Track task counts for filters
   const { taskCounts } = useTracker(function() {
     // Subscribe to tasks

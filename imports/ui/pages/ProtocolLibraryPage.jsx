@@ -41,13 +41,16 @@ export default function ProtocolLibraryPage() {
       filter.description = { $regex: searchTerm, $options: 'i' };
     }
 
+    // Get the current user first
+    const user = Meteor.user();
+
     // Add public/private filter
     if (filterPublic) {
       filter.public = true;
-    } else if (currentUser) {
+    } else if (user) {
       // Show my protocols if not showing public ones
       filter.$or = [
-        { requester: currentUser._id },
+        { requester: user._id },
         { public: true }
       ];
     }
@@ -58,7 +61,7 @@ export default function ProtocolLibraryPage() {
         filter,
         { sort: { lastModified: -1 } }
       ).fetch(),
-      currentUser: Meteor.user()
+      currentUser: user
     };
   }, [searchTerm, filterPublic]);
 

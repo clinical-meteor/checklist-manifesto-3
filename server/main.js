@@ -9,6 +9,9 @@ import { ensureAdminUser } from '/imports/startup/server/accounts-config';
 // Import methods and publications
 import '/imports/api/tasks/methods';
 import '/imports/api/tasks/publications';
+import '/imports/api/tasks/protocol-methods.js';
+import '/imports/api/tasks/protocol-publications.js';
+
 import '/imports/api/users/methods';
 import '/imports/api/users/publications';
 

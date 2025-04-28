@@ -73,7 +73,7 @@ export function App() {
           <Route path="/protocols" element={<ProtocolLibraryPage />} />
           <Route path="/import-export" element={user ? <ImportExportPage /> : <Navigate to="/login" replace />} />
           <Route path="/protocols" element={<ProtocolLibraryPage />} />
-          <Route path="/protocol/:protocolId" element={user ? <TaskDetailsPage isProtocol={true} /> : <Navigate to="/login" replace />} />
+          <Route path="/protocol/:protocolId" element={user ? <TaskDetailsPage isProtocol={true} /> : <Navigate to="/login" replace />} /> 
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
