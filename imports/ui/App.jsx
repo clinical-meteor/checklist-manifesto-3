@@ -8,7 +8,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import MainLayout from './layouts/MainLayout';
 import AuthLayout from './layouts/AuthLayout';
 
-// Pages
+// Pages - Make sure all imports are correct
 import TaskListPage from './pages/TaskListPage';
 import TaskDetailsPage from './pages/TaskDetailsPage';
 import LoginPage from './pages/LoginPage';
@@ -75,8 +75,7 @@ export function App() {
           <Route path="/task/:taskId" element={user ? <TaskDetailsPage /> : <Navigate to="/login" replace />} />
           <Route path="/protocols" element={<ProtocolLibraryPage />} />
           <Route path="/import-export" element={user ? <ImportExportPage /> : <Navigate to="/login" replace />} />
-          <Route path="/protocols" element={<CombinedListsPage />} /> 
-          <Route path="/protocol/:protocolId" element={user ? <TaskDetailsPage isProtocol={true} /> : <Navigate to="/login" replace />} /> 
+          <Route path="/protocol/:protocolId" element={<TaskDetailsPage isProtocol={true} />} />
           <Route path="/lists" element={user ? <ListsPage /> : <Navigate to="/login" replace />} />
           <Route path="/list/:listId" element={user ? <ListDetailPage /> : <Navigate to="/login" replace />} />
           <Route path="*" element={<NotFoundPage />} />

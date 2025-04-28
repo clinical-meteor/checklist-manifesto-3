@@ -2,32 +2,32 @@ import React, { useState, useEffect } from 'react';
 import { Meteor } from 'meteor/meteor';
 import { useTracker } from 'meteor/react-meteor-data';
 import { TasksCollection } from '/imports/db/TasksCollection';
-import { get, set } from 'lodash';
+import { get, set, cloneDeep } from 'lodash';
 import moment from 'moment';
 
 // Material UI components
-import Box from '@mui/material/Box';
-import Paper from '@mui/material/Paper';
-import Typography from '@mui/material/Typography';
-import Grid from '@mui/material/Grid';
-import Tab from '@mui/material/Tab';
-import Tabs from '@mui/material/Tabs';
-import Button from '@mui/material/Button';
-import TextField from '@mui/material/TextField';
-import ToggleButton from '@mui/material/ToggleButton';
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
-import FormControl from '@mui/material/FormControl';
-import InputLabel from '@mui/material/InputLabel';
-import MenuItem from '@mui/material/MenuItem';
-import Select from '@mui/material/Select';
-import CircularProgress from '@mui/material/CircularProgress';
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
-import CardHeader from '@mui/material/CardHeader';
-import CardActions from '@mui/material/CardActions';
-import Snackbar from '@mui/material/Snackbar';
-import Alert from '@mui/material/Alert';
-import Divider from '@mui/material/Divider';
+import {
+  Box,
+  Paper,
+  Typography,
+  Grid,
+  Tab,
+  Tabs,
+  Button,
+  TextField,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+  CircularProgress,
+  Card,
+  CardContent,
+  CardHeader,
+  CardActions,
+  Snackbar,
+  Alert,
+  Divider
+} from '@mui/material';
 
 // Icons
 import FileUploadIcon from '@mui/icons-material/FileUpload';
@@ -35,7 +35,7 @@ import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ContentPasteIcon from '@mui/icons-material/ContentPaste';
 import DeleteIcon from '@mui/icons-material/Delete';
-import CodeIcon from '@mui/icons-material/Code';
+import RefreshIcon from '@mui/icons-material/Refresh';
 
 // DropZone component
 import { useDropzone } from 'react-dropzone';
@@ -47,25 +47,22 @@ import 'ace-builds/src-noconflict/theme-github';
 import 'ace-builds/src-noconflict/theme-monokai';
 import 'ace-builds/src-noconflict/ext-language_tools';
 
-export function TaskDataExporter(props) {
+export function TaskDataExporter({ defaultMode = 'import' }) {
   // Component state
-  const [tabIndex, setTabIndex] = useState(0);
+  const [tabIndex, setTabIndex] = useState(defaultMode === 'export' ? 1 : 0);
   const [exportFormat, setExportFormat] = useState('bundle'); // 'bundle' or 'ndjson'
   const [importData, setImportData] = useState('');
   const [exportData, setExportData] = useState('');
   const [fileName, setFileName] = useState('tasks-export-' + moment().format('YYYY-MM-DD'));
   const [isLoading, setIsLoading] = useState(false);
   const [notification, setNotification] = useState({ open: false, message: '', severity: 'info' });
+  const [editorKey, setEditorKey] = useState(0); // Used to force re-render of editor
 
-  // Theme from context
-  let theme = 'light';
-  if (typeof Meteor.useTheme === 'function') {
-    const themeContext = Meteor.useTheme();
-    theme = themeContext.theme;
-  }
+  // Theme from context or default to light
+  const theme = get(Meteor, 'settings.public.theme', 'light');
 
   // Get personal tasks from database (owned by current user)
-  const { tasks, tasksLoading } = useTracker(() => {
+  const { tasks, tasksLoading } = useTracker(function() {
     const tasksHandle = Meteor.subscribe('tasks.mine');
     
     return {
@@ -86,13 +83,15 @@ export function TaskDataExporter(props) {
       'application/json': ['.json'],
       'application/x-ndjson': ['.ndjson', '.phr']
     },
-    onDrop: acceptedFiles => {
+    onDrop: function(acceptedFiles) {
       handleFileUpload(acceptedFiles);
     }
   });
 
   // Handle file upload
   async function handleFileUpload(files) {
+    if (!files || files.length === 0) return;
+    
     setIsLoading(true);
     
     try {
@@ -143,28 +142,33 @@ export function TaskDataExporter(props) {
           meta: {
             lastUpdated: new Date().toISOString()
           },
-          entry: tasks.map(task => ({
-            fullUrl: `Task/${task.id || task._id}`,
-            resource: sanitizeTaskForExport(task),
-            request: {
-              method: 'PUT',
-              url: `Task/${task.id || task._id}`
-            }
-          }))
+          entry: tasks.map(function(task) {
+            return {
+              fullUrl: `Task/${task.id || task._id}`,
+              resource: sanitizeTaskForExport(task),
+              request: {
+                method: 'PUT',
+                url: `Task/${task.id || task._id}`
+              }
+            };
+          })
         };
         
         setExportData(JSON.stringify(bundle, null, 2));
       } else {
         // Create NDJSON format (one JSON object per line)
         const ndjson = tasks
-          .map(task => JSON.stringify(sanitizeTaskForExport(task)))
+          .map(function(task) {
+            return JSON.stringify(sanitizeTaskForExport(task));
+          })
           .join('\n');
         
         setExportData(ndjson);
       }
       
-      // Switch to the export tab
-      setTabIndex(1);
+      // Force editor to update with new format
+      setEditorKey(prev => prev + 1);
+      
       showNotification(`${tasks.length} tasks prepared for export`, 'success');
     } catch (error) {
       console.error('Error generating export:', error);
@@ -177,7 +181,7 @@ export function TaskDataExporter(props) {
   // Sanitize task for export (ensure FHIR compliance)
   function sanitizeTaskForExport(task) {
     // Create a deep copy to avoid modifying the original
-    const sanitizedTask = { ...task };
+    const sanitizedTask = cloneDeep(task);
     
     // Ensure resourceType is set
     sanitizedTask.resourceType = 'Task';
@@ -230,8 +234,16 @@ export function TaskDataExporter(props) {
         // Handle NDJSON format (one JSON object per line)
         taskResources = importData
           .split('\n')
-          .filter(line => line.trim())
-          .map(line => JSON.parse(line));
+          .filter(function(line) { return line.trim(); })
+          .map(function(line) { 
+            try {
+              return JSON.parse(line);
+            } catch (e) {
+              console.warn('Failed to parse NDJSON line:', e);
+              return null;
+            }
+          })
+          .filter(function(resource) { return resource && resource.resourceType === 'Task'; });
       } else {
         // Try to parse as a single JSON
         const parsedData = JSON.parse(importData);
@@ -240,8 +252,8 @@ export function TaskDataExporter(props) {
         if (parsedData.resourceType === 'Bundle' && Array.isArray(parsedData.entry)) {
           // Extract resources from bundle
           taskResources = parsedData.entry
-            .filter(entry => get(entry, 'resource.resourceType') === 'Task')
-            .map(entry => entry.resource);
+            .filter(function(entry) { return get(entry, 'resource.resourceType') === 'Task'; })
+            .map(function(entry) { return entry.resource; });
         } else if (parsedData.resourceType === 'Task') {
           // It's a single Task resource
           taskResources = [parsedData];
@@ -256,29 +268,23 @@ export function TaskDataExporter(props) {
         return;
       }
       
-      // Import each task
-      const importResults = await Promise.all(
-        taskResources.map(taskResource => {
-          return new Promise((resolve, reject) => {
-            Meteor.call('tasks.import', taskResource, (error, result) => {
-              if (error) {
-                reject(error);
-              } else {
-                resolve(result);
-              }
-            });
-          });
-        })
-      );
-      
-      showNotification(`Successfully imported ${importResults.length} tasks`, 'success');
-      
-      // Clear the import data
-      setImportData('');
+      // Call the server-side method to import multiple tasks at once
+      Meteor.call('tasks.importMultiple', taskResources, function(error, result) {
+        setIsLoading(false);
+        
+        if (error) {
+          console.error('Error importing tasks:', error);
+          showNotification('Error importing tasks: ' + error.message, 'error');
+        } else {
+          showNotification(`Successfully imported ${result.imported} tasks`, 'success');
+          
+          // Clear the import data
+          setImportData('');
+        }
+      });
     } catch (error) {
       console.error('Error importing tasks:', error);
       showNotification('Error importing tasks: ' + error.message, 'error');
-    } finally {
       setIsLoading(false);
     }
   }
@@ -310,7 +316,7 @@ export function TaskDataExporter(props) {
     a.click();
     
     // Clean up
-    setTimeout(() => {
+    setTimeout(function() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     }, 0);
@@ -326,10 +332,10 @@ export function TaskDataExporter(props) {
     }
     
     navigator.clipboard.writeText(exportData)
-      .then(() => {
+      .then(function() {
         showNotification('Export data copied to clipboard', 'success');
       })
-      .catch(err => {
+      .catch(function(err) {
         console.error('Error copying to clipboard:', err);
         showNotification('Error copying to clipboard', 'error');
       });
@@ -338,6 +344,15 @@ export function TaskDataExporter(props) {
   // Handle tab change
   function handleTabChange(event, newValue) {
     setTabIndex(newValue);
+  }
+
+  // Handle export format change
+  function handleExportFormatChange(event) {
+    setExportFormat(event.target.value);
+    // Regenerate export with new format
+    if (!tasksLoading && tasks.length > 0) {
+      generateExport();
+    }
   }
 
   // Show notification
@@ -363,15 +378,15 @@ export function TaskDataExporter(props) {
     }
   }
 
-  // Generate export automatically when tasks are loaded
-  useEffect(() => {
-    if (!tasksLoading && tabIndex === 1 && !exportData) {
+  // Generate export automatically when tasks are loaded or format changes
+  useEffect(function() {
+    if (!tasksLoading && tabIndex === 1 && tasks.length > 0) {
       generateExport();
     }
   }, [tasksLoading, tabIndex, exportFormat]);
 
   return (
-    <Box sx={{ py: 2 }}>
+    <Box sx={{ width: '100%' }}>
       <Paper sx={{ mb: 3 }}>
         <Tabs
           value={tabIndex}
@@ -393,106 +408,112 @@ export function TaskDataExporter(props) {
 
       {tabIndex === 0 ? (
         // Import Tab
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={7}>
-            <Card>
-              <CardHeader title="Import Tasks" />
-              <CardContent>
-                <Box 
-                  {...getRootProps()} 
-                  sx={{
-                    border: '2px dashed',
-                    borderColor: isDragActive ? 'primary.main' : 'grey.400',
-                    borderRadius: 2,
-                    p: 3,
-                    mb: 3,
-                    textAlign: 'center',
-                    backgroundColor: isDragActive ? 'rgba(0, 0, 0, 0.04)' : 'transparent',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <input {...getInputProps()} />
-                  {isDragActive ? (
-                    <Typography>Drop the files here...</Typography>
-                  ) : (
-                    <Typography>
-                      Drag and drop JSON or NDJSON files here, or click to select files
-                    </Typography>
-                  )}
-                </Box>
+        <Card>
+          <CardHeader title="Import Tasks" />
+          <CardContent>
+            {/* Drop zone */}
+            <Box 
+              {...getRootProps()} 
+              sx={{
+                border: '2px dashed',
+                borderColor: isDragActive ? 'primary.main' : 'grey.400',
+                borderRadius: 2,
+                p: 3,
+                mb: 3,
+                textAlign: 'center',
+                backgroundColor: isDragActive ? 'rgba(0, 0, 0, 0.04)' : 'transparent',
+                cursor: 'pointer'
+              }}
+            >
+              <input {...getInputProps()} />
+              {isDragActive ? (
+                <Typography>Drop the files here...</Typography>
+              ) : (
+                <Typography>
+                  Drag and drop JSON or NDJSON files here, or click to select files
+                </Typography>
+              )}
+            </Box>
 
-                <Typography variant="subtitle2" gutterBottom>
-                  Or paste JSON/NDJSON data below:
-                </Typography>
-                
-                <AceEditor
-                  mode="json"
-                  theme={theme === 'dark' ? 'monokai' : 'github'}
-                  width="100%"
-                  height="400px"
-                  value={importData}
-                  onChange={setImportData}
-                  name="import-editor"
-                  editorProps={{ $blockScrolling: true }}
-                  setOptions={{
-                    useWorker: false,
-                    showLineNumbers: true,
-                    tabSize: 2,
-                  }}
-                />
-              </CardContent>
-              <CardActions>
-                <Button 
-                  startIcon={<DeleteIcon />} 
-                  onClick={clearEditor}
-                  disabled={!importData || isLoading}
-                >
-                  Clear
-                </Button>
-                <Box sx={{ flexGrow: 1 }} />
-                <Button
-                  variant="contained"
-                  color="primary"
-                  startIcon={<ContentPasteIcon />}
-                  onClick={importTasks}
-                  disabled={!importData || isLoading}
-                >
-                  {isLoading ? <CircularProgress size={24} /> : 'Import Tasks'}
-                </Button>
-              </CardActions>
-            </Card>
-          </Grid>
-          
-          <Grid item xs={12} md={5}>
-            <Card>
-              <CardHeader title="Import Help" />
-              <CardContent>
-                <Typography variant="subtitle2" gutterBottom>
-                  Supported formats:
-                </Typography>
-                <Typography paragraph>
-                  • FHIR Bundle containing Task resources
-                </Typography>
-                <Typography paragraph>
-                  • Single FHIR Task resource
-                </Typography>
-                <Typography paragraph>
-                  • NDJSON file with one Task resource per line
-                </Typography>
-                
-                <Divider sx={{ my: 2 }} />
-                
-                <Typography variant="subtitle2" gutterBottom>
-                  Example Task (minimal):
-                </Typography>
+            <Typography variant="subtitle2" gutterBottom>
+              Or paste JSON/NDJSON data below:
+            </Typography>
+            
+            {/* Editor - full width */}
+            <Box sx={{ width: '100%', position: 'relative' }}>
+              <AceEditor
+                mode="json"
+                theme={theme === 'dark' ? 'monokai' : 'github'}
+                width="100%"
+                height="400px"
+                value={importData}
+                onChange={setImportData}
+                name="import-editor"
+                editorProps={{ $blockScrolling: true }}
+                setOptions={{
+                  useWorker: false,
+                  showLineNumbers: true,
+                  tabSize: 2,
+                }}
+              />
+              
+              {isLoading && (
                 <Box sx={{ 
-                  backgroundColor: 'grey.100', 
-                  p: 2, 
-                  borderRadius: 1,
-                  fontSize: '0.85rem',
-                  fontFamily: 'monospace',
-                  whiteSpace: 'pre-wrap'
+                  position: 'absolute', 
+                  top: 0, 
+                  left: 0, 
+                  right: 0, 
+                  bottom: 0, 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  backgroundColor: 'rgba(255, 255, 255, 0.7)' 
                 }}>
+                  <CircularProgress />
+                </Box>
+              )}
+            </Box>
+            
+            {/* Help section - always displayed below editor */}
+            <Paper variant="outlined" sx={{ mt: 3, p: 2 }}>
+              <Typography variant="subtitle1" gutterBottom fontWeight="bold">
+                Import Help
+              </Typography>
+              
+              <Typography variant="subtitle2" gutterBottom>
+                Supported formats:
+              </Typography>
+              <ul>
+                <li>
+                  <Typography paragraph>
+                    FHIR Bundle containing Task resources
+                  </Typography>
+                </li>
+                <li>
+                  <Typography paragraph>
+                    Single FHIR Task resource
+                  </Typography>
+                </li>
+                <li>
+                  <Typography paragraph>
+                    NDJSON file with one Task resource per line
+                  </Typography>
+                </li>
+              </ul>
+              
+              <Divider sx={{ my: 2 }} />
+              
+              <Typography variant="subtitle2" gutterBottom>
+                Example Task (minimal):
+              </Typography>
+              <Box sx={{ 
+                backgroundColor: 'grey.100', 
+                p: 2, 
+                borderRadius: 1,
+                fontSize: '0.85rem',
+                fontFamily: 'monospace',
+                whiteSpace: 'pre-wrap'
+              }}>
 {`{
   "resourceType": "Task",
   "status": "requested",
@@ -502,97 +523,140 @@ export function TaskDataExporter(props) {
     "end": "2025-05-01T00:00:00.000Z"
   }
 }`}
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
+              </Box>
+            </Paper>
+          </CardContent>
+          <CardActions>
+            <Button 
+              startIcon={<DeleteIcon />} 
+              onClick={clearEditor}
+              disabled={!importData || isLoading}
+            >
+              Clear
+            </Button>
+            <Box sx={{ flexGrow: 1 }} />
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={isLoading ? <CircularProgress size={24} /> : <ContentPasteIcon />}
+              onClick={importTasks}
+              disabled={!importData || isLoading}
+            >
+              {isLoading ? 'Importing...' : 'Import Tasks'}
+            </Button>
+          </CardActions>
+        </Card>
       ) : (
         // Export Tab
-        <Grid container spacing={3}>
-          <Grid item xs={12}>
-            <Card>
-              <CardHeader title="Export Tasks" />
-              <CardContent>
-                <Box sx={{ mb: 3 }}>
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        label="File Name"
-                        value={fileName}
-                        onChange={(e) => setFileName(e.target.value)}
-                        fullWidth
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <FormControl fullWidth>
-                        <InputLabel id="export-format-label">Export Format</InputLabel>
-                        <Select
-                          labelId="export-format-label"
-                          id="export-format-select"
-                          value={exportFormat}
-                          label="Export Format"
-                          onChange={(e) => setExportFormat(e.target.value)}
-                        >
-                          <MenuItem value="bundle">FHIR Bundle (.json)</MenuItem>
-                          <MenuItem value="ndjson">NDJSON (.ndjson)</MenuItem>
-                        </Select>
-                      </FormControl>
-                    </Grid>
-                  </Grid>
-                </Box>
-                
-                <Typography variant="subtitle2" gutterBottom>
-                  Export Data: {tasks.length} Personal Tasks
-                </Typography>
-                
-                <AceEditor
-                  mode="json"
-                  theme={theme === 'dark' ? 'monokai' : 'github'}
-                  width="100%"
-                  height="400px"
-                  value={exportData}
-                  onChange={setExportData}
-                  name="export-editor"
-                  readOnly={false}
-                  editorProps={{ $blockScrolling: true }}
-                  setOptions={{
-                    useWorker: false,
-                    showLineNumbers: true,
-                    tabSize: 2,
-                  }}
+        <Card>
+          <CardHeader title="Export Tasks" />
+          <CardContent>
+            <Grid container spacing={2} sx={{ mb: 3 }}>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  label="File Name"
+                  value={fileName}
+                  onChange={(e) => setFileName(e.target.value)}
+                  fullWidth
+                  disabled={isLoading}
                 />
-              </CardContent>
-              <CardActions>
-                <Button 
-                  startIcon={<DeleteIcon />} 
-                  onClick={clearEditor}
-                  disabled={!exportData || isLoading}
-                >
-                  Clear
-                </Button>
-                <Box sx={{ flexGrow: 1 }} />
-                <Button
-                  startIcon={<ContentCopyIcon />}
-                  onClick={copyToClipboard}
-                  disabled={!exportData || isLoading}
-                  sx={{ mr: 1 }}
-                >
-                  Copy
-                </Button>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  startIcon={<FileDownloadIcon />}
-                  onClick={downloadExport}
-                  disabled={!exportData || isLoading}
-                >
-                  {isLoading ? <CircularProgress size={24} /> : 'Download'}
-                </Button>
-              </CardActions>
-            </Card>
-          </Grid>
-        </Grid>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth>
+                  <InputLabel id="export-format-label">Export Format</InputLabel>
+                  <Select
+                    labelId="export-format-label"
+                    id="export-format-select"
+                    value={exportFormat}
+                    label="Export Format"
+                    onChange={handleExportFormatChange}
+                    disabled={isLoading}
+                  >
+                    <MenuItem value="bundle">FHIR Bundle (.json)</MenuItem>
+                    <MenuItem value="ndjson">NDJSON (.ndjson)</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
+            
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="subtitle2">
+                Export Data: {tasks.length} Personal Tasks
+              </Typography>
+              <Button
+                startIcon={<RefreshIcon />}
+                size="small"
+                onClick={generateExport}
+                disabled={isLoading || tasksLoading || tasks.length === 0}
+              >
+                Refresh
+              </Button>
+            </Box>
+            
+            <Box sx={{ width: '100%', position: 'relative' }}>
+              <AceEditor
+                key={editorKey} // Force re-render when format changes
+                mode={exportFormat === 'ndjson' ? 'text' : 'json'}
+                theme={theme === 'dark' ? 'monokai' : 'github'}
+                width="100%"
+                height="400px"
+                value={exportData}
+                onChange={setExportData}
+                name="export-editor"
+                readOnly={false}
+                editorProps={{ $blockScrolling: true }}
+                setOptions={{
+                  useWorker: false,
+                  showLineNumbers: true,
+                  tabSize: 2,
+                }}
+              />
+              
+              {isLoading && (
+                <Box sx={{ 
+                  position: 'absolute', 
+                  top: 0, 
+                  left: 0, 
+                  right: 0, 
+                  bottom: 0, 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  backgroundColor: 'rgba(255, 255, 255, 0.7)' 
+                }}>
+                  <CircularProgress />
+                </Box>
+              )}
+            </Box>
+          </CardContent>
+          <CardActions>
+            <Button 
+              startIcon={<DeleteIcon />} 
+              onClick={clearEditor}
+              disabled={!exportData || isLoading}
+            >
+              Clear
+            </Button>
+            <Box sx={{ flexGrow: 1 }} />
+            <Button
+              startIcon={<ContentCopyIcon />}
+              onClick={copyToClipboard}
+              disabled={!exportData || isLoading}
+              sx={{ mr: 1 }}
+            >
+              Copy
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<FileDownloadIcon />}
+              onClick={downloadExport}
+              disabled={!exportData || isLoading}
+            >
+              Download
+            </Button>
+          </CardActions>
+        </Card>
       )}
 
       {/* Notification snackbar */}

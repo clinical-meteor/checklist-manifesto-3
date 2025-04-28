@@ -41,8 +41,11 @@ export default function FirstRunSetupPage() {
   ];
 
   // Navigate to next step
-  const handleNext = () => {
+  const handleNext = function(callback){
     setActiveStep((prevStep) => prevStep + 1);
+    if(typeof callback === "function"){
+      callback()
+    }
   };
 
   // Navigate to previous step
@@ -105,12 +108,7 @@ export default function FirstRunSetupPage() {
         Meteor.loginWithPassword({ username }, password, function(loginErr) {
           if (loginErr) {
             console.error('Auto-login error:', loginErr);
-          } else {
-            // Create sample data if selected
-            if (createSampleData) {
-              createInitialData();
-            }
-          }
+          } 
         });
       }
     });
@@ -135,12 +133,23 @@ export default function FirstRunSetupPage() {
     // Create sample protocols if selected
     if (createSampleProtocols) {
       console.log('Creating sample protocols...');
-      Meteor.call('protocols.createSampleData', (error, result) => {
+      // This will now just ensure the system templates exist, but won't assign them to the user
+      Meteor.call('protocols.ensureSystemTemplates', (error, result) => {
         if (error) {
-          console.error('Error creating sample protocols:', error);
-          // Don't set isSubmitting to false yet, wait for all operations to complete
+          console.error('Error ensuring system protocol templates:', error);
         } else {
-          console.log('Sample protocols created successfully:', result);
+          console.log('System protocol templates available:', result);
+          
+          // Optionally clone some of them for the user if they specifically want examples
+          if (createPersonalCopies) {
+            Meteor.call('protocols.cloneSystemTemplatesToUser', (cloneError, cloneResult) => {
+              if (cloneError) {
+                console.error('Error cloning protocol templates:', cloneError);
+              } else {
+                console.log('Protocol templates cloned to user account:', cloneResult);
+              }
+            });
+          }
         }
         
         // Set submitting to false after all operations are completed
@@ -298,38 +307,23 @@ export default function FirstRunSetupPage() {
                 <FormControlLabel
                   control={
                     <Checkbox
-                      checked={createSampleData}
-                      onChange={handleToggleSampleData}
-                      disabled={isSubmitting}
+                      checked={createSampleLists}
+                      onChange={(e) => setCreateSampleLists(e.target.checked)}
+                      disabled={isSubmitting || !createSampleData}
                     />
                   }
-                  label="Create sample data for a better demo experience"
-                />
-                  
-                {createSampleData && (
-                  <div>
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={createSampleLists}
-                          onChange={(e) => setCreateSampleLists(e.target.checked)}
-                          disabled={isSubmitting || !createSampleData}
-                        />
-                      }
-                      label="Create sample task lists"
-                    /><br />
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={createSampleProtocols}
-                          onChange={(e) => setCreateSampleProtocols(e.target.checked)}
-                          disabled={isSubmitting || !createSampleData}
-                        />
-                      }
-                      label="Create sample clinical protocols"
+                  label="Create sample task lists"
+                /><br />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={createSampleProtocols}
+                      onChange={(e) => setCreateSampleProtocols(e.target.checked)}
+                      disabled={isSubmitting || !createSampleData}
                     />
-                  </div>
-                )}
+                  }
+                  label="Create sample clinical protocols"
+                />
               </Box>
     
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
@@ -338,7 +332,12 @@ export default function FirstRunSetupPage() {
                 </Button>
                 <Button
                   variant="contained"
-                  onClick={handleNext}
+                  onClick={handleNext.bind(this, function(){
+                    // Create sample data if selected
+                    if (createSampleData) {
+                      createInitialData();
+                    }
+                  })}
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? <CircularProgress size={24} /> : 'Continue'}

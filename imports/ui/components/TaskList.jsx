@@ -1,4 +1,4 @@
-// imports/ui/components/TaskList.jsx
+// imports/ui/components/TaskList.jsx - with fixed sorting
 import React, { useState, useEffect } from 'react';
 import { Meteor } from 'meteor/meteor';
 import { useTracker } from 'meteor/react-meteor-data';
@@ -77,7 +77,10 @@ export function TaskList({ filter, sort = 'lastModified' }) {
 
   // Apply sorting when tasks or sort parameter changes
   useEffect(() => {
-    if (!tasks || tasks.length === 0) return;
+    if (!tasks || tasks.length === 0) {
+      setSortedTasks([]);
+      return;
+    }
 
     // Apply sorting based on the sort parameter
     let sorted = [...tasks]; // Create a new array to avoid modifying the original
@@ -162,7 +165,7 @@ export function TaskList({ filter, sort = 'lastModified' }) {
     }
     
     setSortedTasks(sorted);
-  }, [tasks, sort]);
+  }, [tasks, sort]); // Make sure sort is included in the dependency array
 
   // Handle task deletion
   async function handleDeleteTask(taskId) {
@@ -250,7 +253,7 @@ export function TaskList({ filter, sort = 'lastModified' }) {
               <ListItemText
                 primary={task.description}
                 secondary={
-                  // Fix: Don't use Typography directly, which creates <p> tags
+                  // Don't use Typography directly, which creates <p> tags
                   <Box sx={{ mt: 1 }}>
                     {/* Chips in a horizontal row */}
                     <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>

@@ -119,20 +119,21 @@ export async function initializeProtocols(userId = null, force = false) {
   if (!Meteor.isServer) return;
   
   // Check if we need to load protocols
-  const protocolCount = await TasksCollection.countDocumentsAsync({ 
+  const protocolCount = await TasksCollection.find({ 
     isProtocol: true, 
     public: true 
-  });
+  }).countAsync();
   
   if (protocolCount > 0 && !force) {
     console.log('Default protocols not loaded: protocols already exist');
     return;
   }
   
-  console.log('Loading default protocols...');
+  console.log('Loading default protocols as system templates...');
   
-  // Create an admin user as the creator if no userId is provided
-  const creatorId = userId || 'system';
+  // Use "system" as the creator ID rather than the current user
+  // This way they don't appear in the user's own tasks
+  const creatorId = 'system';
   
   try {
     for (const protocol of DefaultProtocols) {
@@ -150,7 +151,8 @@ export async function initializeProtocols(userId = null, force = false) {
         lastModified: new Date(),
         userId: creatorId,
         isDeleted: false,
-        isProtocol: true // Mark this list as a protocol template
+        isProtocol: true, // Mark this list as a protocol template
+        isSystemTemplate: true // Explicitly mark as system template
       });
       
       console.log(`Created protocol list: ${protocol.name} (${listId})`);
@@ -163,10 +165,11 @@ export async function initializeProtocols(userId = null, force = false) {
         priority: protocol.priority || 'routine',
         authoredOn: new Date(),
         lastModified: new Date(),
-        requester: creatorId,
+        requester: creatorId, // System is the creator, not the current user
         public: true,
         isProtocol: true,
         isTemplate: true,
+        isSystemTemplate: true, // Explicitly mark as system template
         isDeleted: false,
         listId: listId // Link to the list we created
       };
@@ -186,9 +189,10 @@ export async function initializeProtocols(userId = null, force = false) {
             priority: protocol.priority || 'routine',
             authoredOn: new Date(),
             lastModified: new Date(),
-            requester: creatorId,
+            requester: creatorId, // System is the creator, not the current user
             public: true,
             isDeleted: false,
+            isSystemTemplate: true, // Mark as system template
             partOf: {
               reference: `Task/${protocolId}`,
               display: protocol.name
@@ -204,7 +208,7 @@ export async function initializeProtocols(userId = null, force = false) {
       }
     }
     
-    console.log('Default protocols loaded successfully.');
+    console.log('Default protocols loaded successfully as system templates.');
   } catch (error) {
     console.error('Error loading default protocols:', error);
   }

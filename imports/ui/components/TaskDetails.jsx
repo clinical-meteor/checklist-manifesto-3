@@ -1,4 +1,4 @@
-// imports/ui/TaskDetails.jsx
+// imports/ui/components/TaskDetails.jsx
 import React, { useState, useEffect } from 'react';
 import { Meteor } from 'meteor/meteor';
 import { useTracker } from 'meteor/react-meteor-data';
@@ -32,6 +32,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
+import Alert from '@mui/material/Alert';
 
 // Icons
 import CloseIcon from '@mui/icons-material/Close';
@@ -43,13 +44,16 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import AddCommentIcon from '@mui/icons-material/AddComment';
 
+// Import components with correct named exports
 import ModifyProtocolDialog from './ModifyProtocolDialog';
 import SaveAltIcon from '@mui/icons-material/SaveAlt';
 import PublicIcon from '@mui/icons-material/Public';
 
 import { useNavigate } from 'react-router-dom';
 
-export function TaskDetails({ taskId, open, onClose, isProtocol = false }) {
+function TaskDetails({ taskId, open, onClose, isProtocol = false }) {
+  const navigate = useNavigate();
+  
   // State for the form
   const [isEditing, setIsEditing] = useState(false);
   const [description, setDescription] = useState('');
@@ -363,8 +367,6 @@ export function TaskDetails({ taskId, open, onClose, isProtocol = false }) {
               Save Changes
             </Button>
           )}        
-
-
         </DialogActions>
       </Dialog>
     );
@@ -647,5 +649,5 @@ export function TaskDetails({ taskId, open, onClose, isProtocol = false }) {
   );
 }
 
-
-
+// Make sure to export the component correctly
+export default TaskDetails;

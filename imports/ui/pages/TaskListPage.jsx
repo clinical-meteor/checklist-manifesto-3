@@ -1,4 +1,4 @@
-// in imports/ui/pages/TaskListPage.jsx
+// imports/ui/pages/TaskListPage.jsx - with fixed sort handling
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Meteor } from 'meteor/meteor';
@@ -72,6 +72,7 @@ export default function TaskListPage() {
   };
   
   const handleSortChange = function(newSort) {
+    console.log('Sorting tasks by:', newSort);
     setSort(newSort);
   };
   
@@ -101,7 +102,7 @@ export default function TaskListPage() {
       </Box>
       
       <Box>
-        <TaskList filter={filter} />
+        <TaskList filter={filter} sort={sort} />
       </Box>
     </Container>
   );

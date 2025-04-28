@@ -22,7 +22,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 // Collections
 import { TasksCollection } from '../../db/TasksCollection';
 
-// Components
+// Task Details Component - Make sure to import correctly
 import TaskDetails from '../components/TaskDetails';
 
 /**
@@ -34,7 +34,7 @@ export default function TaskDetailsPage({ isProtocol = false }) {
   const [open, setOpen] = useState(true);
   
   // Track the task data
-  const { task, isLoading } = useTracker(() => {
+  const { task, isLoading } = useTracker(function() {
     // Use the appropriate subscription based on whether this is a task or protocol
     const subscription = isProtocol ? 
       Meteor.subscribe('protocols.single', taskId) : 

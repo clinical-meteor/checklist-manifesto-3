@@ -118,26 +118,44 @@ export default function FirstRunSetupPage() {
 
   // Create initial sample data
   const createInitialData = () => {
+    setIsSubmitting(true);
+    
     // Create personal/home sample lists if selected
-    if (createPersonalLists) {
-      Meteor.call('lists.createSampleData', (error) => {
+    if (createSampleLists) {
+      console.log('Creating sample lists...');
+      Meteor.call('lists.createSampleData', (error, result) => {
         if (error) {
           console.error('Error creating sample lists:', error);
         } else {
-          console.log('Sample lists created successfully');
+          console.log('Sample lists created successfully:', result);
+        }
+        
+        // Set isSubmitting to false after personal lists creation completes
+        // if we're not also creating protocols
+        if (!createSampleProtocols) {
+          setIsSubmitting(false);
         }
       });
     }
     
-    // Create clinical protocols if selected
-    if (createClinicalProtocols) {
-      Meteor.call('protocols.createSampleData', (error) => {
+    // Create clinical protocols if selected, but don't assign them to the user
+    if (createSampleProtocols) {
+      console.log('Creating sample protocols...');
+      
+      // Use the system method that creates public protocols not assigned to the current user
+      Meteor.call('protocols.ensureSystemTemplates', (error, result) => {
         if (error) {
           console.error('Error creating clinical protocols:', error);
         } else {
-          console.log('Clinical protocols created successfully');
+          console.log('Clinical protocols created successfully:', result);
         }
+        
+        // Always set submitting to false when protocols are done
+        setIsSubmitting(false);
       });
+    } else if (!createSampleLists) {
+      // If neither option is selected, make sure we still reset the submitting state
+      setIsSubmitting(false);
     }
   };
 
@@ -280,49 +298,34 @@ export default function FirstRunSetupPage() {
               </Typography>
                 
               {/* Sample data checkboxes */}
-              <Box sx={{ mt: 3, p: 3, bgcolor: 'background.paper', borderRadius: 1 }}>
+              <Box sx={{ ml: 4, mt: 2 }}>
                 <FormControlLabel
                   control={
                     <Checkbox
-                      checked={createSampleData}
-                      onChange={handleToggleSampleData}
-                      disabled={isSubmitting}
+                      checked={createPersonalLists}
+                      onChange={(e) => setCreatePersonalLists(e.target.checked)}
+                      disabled={isSubmitting || !createSampleData}
                     />
                   }
-                  label="Create sample data for a better demo experience"
+                  label="Create personal/home sample task lists"
                 />
-                  
-                {createSampleData && (
-                  <Box sx={{ ml: 4, mt: 2 }}>
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={createPersonalLists}
-                          onChange={(e) => setCreatePersonalLists(e.target.checked)}
-                          disabled={isSubmitting || !createSampleData}
-                        />
-                      }
-                      label="Create personal/home sample task lists"
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', ml: 4, mb: 2 }}>
+                  Includes lists like "Shopping List", "Work Tasks", and "Home Projects"
+                </Typography>
+                
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={createClinicalProtocols}
+                      onChange={(e) => setCreateClinicalProtocols(e.target.checked)}
+                      disabled={isSubmitting || !createSampleData}
                     />
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', ml: 4, mb: 2 }}>
-                      Includes lists like "Shopping List", "Work Tasks", and "Home Projects"
-                    </Typography>
-                    
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={createClinicalProtocols}
-                          onChange={(e) => setCreateClinicalProtocols(e.target.checked)}
-                          disabled={isSubmitting || !createSampleData}
-                        />
-                      }
-                      label="Create clinical protocol templates"
-                    />
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', ml: 4 }}>
-                      Includes protocols like "Collect Blood Specimen", "MRI Safety Checklist", and other medical procedures
-                    </Typography>
-                  </Box>
-                )}
+                  }
+                  label="Create clinical protocol templates"
+                />
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', ml: 4 }}>
+                  Includes protocols like "Collect Blood Specimen", "MRI Safety Checklist", and other medical procedures
+                </Typography>
               </Box>
     
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
