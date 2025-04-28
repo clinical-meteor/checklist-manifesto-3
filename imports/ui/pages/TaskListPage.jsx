@@ -1,5 +1,5 @@
 // imports/ui/pages/TaskListPage.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Meteor } from 'meteor/meteor';
 import { useTracker } from 'meteor/react-meteor-data';
@@ -25,6 +25,12 @@ export default function TaskListPage() {
   const [filter, setFilter] = useState(urlFilter || 'all');
   const [sort, setSort] = useState('lastModified');
   
+  useEffect(() => {
+    if (urlFilter) {
+      setFilter(urlFilter);
+    }
+  }, [urlFilter]);
+
   // Track task counts for filters
   const { taskCounts } = useTracker(function() {
     // Subscribe to tasks

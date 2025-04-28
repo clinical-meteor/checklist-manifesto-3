@@ -43,6 +43,9 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import AddCommentIcon from '@mui/icons-material/AddComment';
 
+import ModifyProtocolDialog from './ModifyProtocolDialog';
+import { useNavigate } from 'react-router-dom';
+
 export function TaskDetails({ taskId, open, onClose }) {
   // State for the form
   const [isEditing, setIsEditing] = useState(false);
@@ -53,7 +56,7 @@ export function TaskDetails({ taskId, open, onClose }) {
   const [noteText, setNoteText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPublic, setIsPublic] = useState(false);
-
+  const [protocolDialogOpen, setProtocolDialogOpen] = useState(false);
 
   useEffect(() => {
     if (task) {
@@ -290,6 +293,13 @@ export function TaskDetails({ taskId, open, onClose }) {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose}>Close</Button> 
+          <Button
+            startIcon={<SaveAltIcon />}
+            onClick={() => setProtocolDialogOpen(true)}
+            disabled={!canEditTask()}
+          >
+            Save as Protocol
+          </Button>
           {canEditTask() && (
             <Button
               color={isPublic ? "primary" : "default"}
@@ -307,6 +317,17 @@ export function TaskDetails({ taskId, open, onClose }) {
     );
   }
 
+  {protocolDialogOpen && (
+    <ModifyProtocolDialog
+      open={protocolDialogOpen}
+      onClose={() => setProtocolDialogOpen(false)}
+      taskId={task._id}
+      onSave={(protocolId) => {
+        // Show success message or redirect
+        setProtocolDialogOpen(false);
+      }}
+    />
+  )}
   // Render task details
   return (
     <Dialog open={open} onClose={handleClose} fullWidth maxWidth="md">
