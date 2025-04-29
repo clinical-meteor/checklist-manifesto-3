@@ -31,7 +31,7 @@ try {
   let content = fs.readFileSync(heroPath, 'utf8');
   
   // Replace the DOWNLOAD_URL constant
-  const newUrl = `https://github.com/yourusername/checklist-manifesto/releases/download/v${version}/${filename}`;
+  const newUrl = `https://github.com/clinical-meteor/checklist-manifesto-3/releases/download/v${version}/${filename}`;
   content = content.replace(
     /const DOWNLOAD_URL = ".*";/,
     `const DOWNLOAD_URL = "${newUrl}";`

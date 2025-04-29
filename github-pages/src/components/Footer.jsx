@@ -33,7 +33,7 @@ function Footer() {
               MIT Licensed open source project.
             </Typography>
             <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
-              <Link href="https://github.com/yourusername/checklist-manifesto" target="_blank" color="inherit">
+              <Link href="https://github.com/clinical-meteor/checklist-manifesto-3" target="_blank" color="inherit">
                 <GitHubIcon />
               </Link>
               <Link href="https://twitter.com/yourusername" target="_blank" color="inherit">
@@ -83,7 +83,7 @@ function Footer() {
                   MIT License
                 </Link>
               </Box>
-              <Box component="li" sx={{ mb: 1 }}>
+              {/* <Box component="li" sx={{ mb: 1 }}>
                 <Link href="#" color="inherit">
                   Privacy Policy
                 </Link>
@@ -92,21 +92,16 @@ function Footer() {
                 <Link href="#" color="inherit">
                   Terms of Use
                 </Link>
-              </Box>
+              </Box> */}
               <Box component="li" sx={{ mb: 1 }}>
                 <Typography variant="body2" color="text.secondary" sx={{ color: 'grey.400' }}>
-                  This project is not affiliated with Atul Gawande or his book "The Checklist Manifesto".
+                  This project is not affiliated with Atul Gawande or his book "The Checklist Manifesto".  Go buy Atul's book anyway.  
                 </Typography>
               </Box>
             </Box>
           </Grid>
         </Grid>
         
-        <Box sx={{ mt: 5, pt: 3, borderTop: '1px solid', borderColor: 'grey.800' }}>
-          <Typography variant="body2" color="text.secondary" align="center" sx={{ color: 'grey.500' }}>
-            © {currentYear} Checklist Manifesto Project. All rights reserved.
-          </Typography>
-        </Box>
       </Container>
     </Box>
   );

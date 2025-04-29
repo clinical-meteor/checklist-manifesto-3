@@ -75,6 +75,7 @@ function About() {
                 height="240"
                 image="https://www.hl7.org/fhir/assets/images/fhir-logo-www.png"
                 alt="FHIR Logo"
+                sx={{objectFit: 'contain'}}
               />
               <CardContent>
                 <Typography variant="h5" component="div" gutterBottom>
@@ -86,7 +87,7 @@ function About() {
                 <Typography variant="body1" color="text.secondary" paragraph>
                   FHIR (Fast Healthcare Interoperability Resources) is a standard for healthcare data exchange, providing a way to represent and exchange clinical data in a consistent manner.
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                <Typography variant="body1" color="text.secondary" sx={{ mt: 2 }}>
                   This project is provided as-is, as a learning resource and starting point. It is not intended for clinical use without proper validation and certification.
                 </Typography>
               </CardContent>

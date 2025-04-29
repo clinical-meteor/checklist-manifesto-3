@@ -10,7 +10,7 @@ import ChecklistIcon from '@mui/icons-material/ChecklistRtl';
 
 // In a real implementation, this would be the URL to your latest GitHub release asset
 // For example: https://github.com/yourusername/checklist-manifesto/releases/download/v1.0.0/checklist-manifesto-v1.0.0.zip
-const DOWNLOAD_URL = "https://github.com/yourusername/checklist-manifesto/releases/latest/download/checklist-manifesto.zip";
+const DOWNLOAD_URL = "https://github.com/clinical-meteor/checklist-manifesto-3/releases/latest/download/checklist-manifesto.zip";
 
 function Hero() {
   return (
@@ -42,27 +42,11 @@ function Hero() {
               Based on FHIR Task resources for healthcare interoperability.
             </Typography>
             
-            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-              <Button
-                variant="contained"
-                size="large"
-                href={DOWNLOAD_URL}
-                startIcon={<DownloadIcon />}
-                sx={{ 
-                  backgroundColor: 'white', 
-                  color: 'primary.main',
-                  fontWeight: 'bold',
-                  '&:hover': {
-                    backgroundColor: 'rgba(255, 255, 255, 0.9)'
-                  } 
-                }}
-              >
-                Download App
-              </Button>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>              
               <Button
                 variant="outlined"
                 size="large"
-                href="https://github.com/yourusername/checklist-manifesto"
+                href="https://github.com/clinical-meteor/checklist-manifesto-3/issues"
                 target="_blank"
                 sx={{ 
                   color: 'white', 
@@ -73,7 +57,23 @@ function Hero() {
                   } 
                 }}
               >
-                View Source
+                Submit Feedback
+              </Button>
+              <Button
+                variant="outlined"
+                size="large"
+                href="https://github.com/clinical-meteor/checklist-manifesto-3/wiki"
+                target="_blank"
+                sx={{ 
+                  color: 'white', 
+                  borderColor: 'white',
+                  '&:hover': {
+                    borderColor: 'white',
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                  } 
+                }}
+              >
+                Wiki
               </Button>
             </Box>
           </Grid>
@@ -96,7 +96,7 @@ function Hero() {
                 Current Version: 1.0.0
               </Typography>
               <Typography variant="body2" align="center" paragraph>
-                Available for Windows, Mac, and Linux
+                Available for Mac OS.  
               </Typography>
               <Button 
                 variant="contained" 

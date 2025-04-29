@@ -64,7 +64,7 @@ function Header() {
             </Button>
             <Button 
               color="inherit"
-              href="https://github.com/yourusername/checklist-manifesto" 
+              href="https://github.com/clinical-meteor/checklist-manifesto-3" 
               target="_blank"
               startIcon={<GitHubIcon />}
             >
@@ -103,7 +103,7 @@ function Header() {
             <ListItem disablePadding>
               <ListItemButton 
                 component="a" 
-                href="https://github.com/yourusername/checklist-manifesto"
+                href="https://github.com/clinical-meteor/checklist-manifesto-3"
                 target="_blank"
               >
                 <GitHubIcon sx={{ mr: 1 }} />
