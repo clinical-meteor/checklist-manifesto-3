@@ -2,6 +2,8 @@
 
 A modern task management application built with Meteor v3, React, and the FHIR Task data schema.
 
+![ChecklistManifest-MRISafetyChecklist](https://github.com/clinical-meteor/checklist-manifesto-3/blob/main/assets/screenshots/ChecklistManifesto-MriSafetyChecklist.png?raw=true)
+
 ## Features
 
 - FHIR-compliant Task data model
