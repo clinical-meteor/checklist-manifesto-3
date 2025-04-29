@@ -1,6 +1,7 @@
 # Ignore docs folder (GitHub Pages website)
 /docs/
 /github-pages/
+/assets/
 /scripts/
 
 # Ignore development files

@@ -10,7 +10,7 @@ import ChecklistIcon from '@mui/icons-material/ChecklistRtl';
 
 // In a real implementation, this would be the URL to your latest GitHub release asset
 // For example: https://github.com/yourusername/checklist-manifesto/releases/download/v1.0.0/checklist-manifesto-v1.0.0.zip
-const DOWNLOAD_URL = "https://github.com/clinical-meteor/checklist-manifesto-3/releases/latest/download/checklist-manifesto.zip";
+const DOWNLOAD_URL = "https://github.com/clinical-meteor/checklist-manifesto-3/releases/download/v1.0.0/Checklist.Manifesto.App-1.0.1.dmg";
 
 function Hero() {
   return (
