@@ -22,4 +22,5 @@ settings.json
 .history
 .versions
 .desktop
+.desktop-installer
 version.desktop
