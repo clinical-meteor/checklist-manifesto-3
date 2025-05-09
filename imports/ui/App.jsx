@@ -49,7 +49,7 @@ export function App() {
         alignItems: 'center', 
         height: '100vh' 
       }}>
-        <div>Loading...</div>
+        <div>User loading...</div>
       </div>
     );
   }

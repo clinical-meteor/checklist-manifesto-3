@@ -3,6 +3,8 @@
 /github-pages/
 /assets/
 /scripts/
+/desktop/
+/meteor-bundle/
 
 # Ignore development files
 .git/

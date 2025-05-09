@@ -18,9 +18,14 @@ mup.json
 .deploy/
 settings.json
 /packages
+/meteor-bundle
+/scripts/mongodb-binaries
 .meteor/local
 .history
 .versions
 .desktop
+.desktop-build
 .desktop-installer
-version.desktop
+.meteor-build
+meteor-bundle
+version.desktop 
