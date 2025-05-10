@@ -5,6 +5,9 @@ import { useTracker } from 'meteor/react-meteor-data';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { CircularProgress, Box, Typography, Button } from '@mui/material';
 
+// Import the ConnectionDiagnostics component
+import { ConnectionDiagnostics } from './components/ConnectionDiagnostics';
+
 // Layouts
 import MainLayout from './layouts/MainLayout';
 import AuthLayout from './layouts/AuthLayout';
@@ -137,21 +140,15 @@ export function App() {
             Reconnect Now
           </Button>
           
-          {/* Show additional restart instructions after multiple attempts */}
-          {reconnectCount > 3 && (
-            <Box sx={{ mt: 4, p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
-              <Typography variant="body2" color="error.main" paragraph>
-                If the application doesn't connect after multiple attempts, you can try:
-              </Typography>
-              <Typography variant="body2" component="div">
-                <ul>
-                  <li>Restarting the application</li>
-                  <li>Checking your computer's internet connection</li>
-                  <li>Clearing application cache (if applicable)</li>
-                </ul>
-              </Typography>
-            </Box>
-          )}
+          {/* Show detailed connection diagnostics */}
+          <Box sx={{ mt: 4, width: '100%', maxWidth: '600px' }}>
+            <ConnectionDiagnostics 
+              connectionStatus={connectionStatus} 
+              reconnectCount={reconnectCount}
+            />
+          </Box>
+          
+          
         </Box>
       </ThemeProvider>
     );

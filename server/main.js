@@ -18,8 +18,12 @@ import '/imports/api/users/publications';
 import '/imports/api/lists/methods';
 import '/imports/api/lists/publications';
 
+import '/imports/api/diagnostics/server/methods';
+
 // Import the integration functions
 import '/server/integration';
+
+
 
 // We'll define the checkFirstRun function here to avoid the import issue
 async function checkFirstRun() {
