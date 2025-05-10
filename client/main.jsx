@@ -3,9 +3,9 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { Meteor } from 'meteor/meteor';
 import { Session } from 'meteor/session';
+import { Tracker } from 'meteor/tracker';
 import { useTracker } from 'meteor/react-meteor-data'; // Added missing import
 import { App } from '/imports/ui/App';
-
 // Import accounts config
 import '/imports/startup/client/accounts-config';
 
@@ -14,6 +14,8 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
+
+import { set, get  } from 'lodash'
 
 // Create theme based on Session value
 // const createAppTheme = (mode) => createTheme({
@@ -135,26 +137,70 @@ const createAppTheme = (mode) => createTheme({
 });
 
 Meteor.startup(() => {
+  // Check if we're in a desktop environment
+  const isDesktop = Meteor.settings?.public?.isDesktop || (typeof Desktop !== 'undefined' && Desktop);
+  
+  // For desktop app: handle reconnection more aggressively
+  if (isDesktop) {
+    console.log('Running in desktop mode - applying desktop-specific settings');
+
+    // Disable the standard hot module replacement (which causes issues in desktop)
+    if (module.hot) {
+      console.log('Disabling hot module replacement for desktop');
+      module.hot.decline();
+    }
+    
+    // Set shorter reconnect delay for desktop
+    if(get(Meteor, 'connection._retry')){
+      console.log('Set shorter reconnect delay for desktop');
+      set(Meteor, connection._retry.minCount, 2);
+      set(Meteor, connection._retry.baseTimeout, 1000);  
+    }
+    
+    // Create a global connection status that UI components can use
+    console.log('Create a global connection status that UI components can use');
+    window.MeteorConnectionStatus = {
+      connected: Meteor.status().connected,
+      status: Meteor.status().status
+    };
+    
+    // // Handle connection status
+    // const connectionStatus = {
+    //   connected: false,
+    //   reconnecting: false
+    // };
+    
+    // Meteor.connection.onReconnect = function() {
+    //   console.log('Meteor reconnected');
+    //   connectionStatus.connected = true;
+    //   connectionStatus.reconnecting = false;
+    // };
+    
+    // Track connection status changes
+    Tracker.autorun(() => {
+      const status = Meteor.status();
+      
+      // Update global status
+      if (window.MeteorConnectionStatus) {
+        window.MeteorConnectionStatus.connected = status.connected;
+        window.MeteorConnectionStatus.status = status.status;
+      }
+      
+      // Log connection changes
+      console.log(`Meteor connection status: ${status.status} (connected: ${status.connected})`);
+    });
+
+    // Override onReconnect
+    const originalOnReconnect = Meteor.connection.onReconnect || function() {};
+    Meteor.connection.onReconnect = function() {
+      console.log('Connection reestablished with server');
+      // Call original handler if it exists
+      originalOnReconnect.call(Meteor.connection);
+    };
+  }
+  
+  // Render the app
   const container = document.getElementById('react-target');
   const root = createRoot(container);
-  
-  // Initialize session values
-  Session.setDefault('theme', 'light');
-  
-  // Create a reactive wrapper component to handle theme changes
-  const AppWithTheme = () => {
-    const theme = useTracker(() => Session.get('theme') || 'light');
-    const appTheme = createAppTheme(theme);
-    
-    return (
-      <ThemeProvider theme={appTheme}>
-        <CssBaseline />
-        <LocalizationProvider dateAdapter={AdapterMoment}>
-          <App />
-        </LocalizationProvider>
-      </ThemeProvider>
-    );
-  };
-  
-  root.render(<AppWithTheme />);
+  root.render(<App />);
 });

@@ -5,7 +5,6 @@ import path from 'path';
 import { spawn } from 'child_process';
 import fs from 'fs';
 import net from 'net';
-import { promisify } from 'util';
 
 /**
  * Entry point to your native desktop code.
@@ -36,6 +35,7 @@ export default class Desktop {
         this.isServerReady = false;
         this.modulesRef = modules;
         this.Module = Module;
+        this.loaderWindow = null;
         
         // Create a desktop module for IPC
         const desktop = new Module('desktop');
@@ -62,58 +62,33 @@ export default class Desktop {
 
         // Start server before window loads
         eventsBus.on('beforeLoadUrl', async () => {
-
-          console.log('App data path:', app.getPath('userData'));
-          console.log('Log path:', app.getPath('logs'));
-          
-          try {
-            // Create test page
-            const testPath = this.createTestPage();
-            
-            // Start processes in the background
-            this.startProcesses().catch(err => {
-                this.log.error('Failed to start processes:', err);
-                console.error('Failed to start processes:', err);
-            });
-            
-            // Load test page instead of Meteor app
-            skeletonApp.setAppUrl('file://' + testPath);
-            
-            this.log.info('Loaded test page');
-            console.log('Loaded test page');
-          } catch (error) {
-              log.error('Failed to create test page:', error);
-              console.error('Failed to create test page:', error);
-          }
-
-
-            // try {
-            //     // Show a proper loading message
-            //     this.updateLoadingStatus('Starting server...');
+            try {
+                // Show a proper loading message
+                this.updateLoadingStatus('Starting server...');
                 
-            //     // Start MongoDB and Meteor server
-            //     await this.startProcesses();
+                // Start MongoDB and Meteor server
+                await this.startProcesses();
                 
-            //     // Set the app URL to our local server
-            //     this.isServerReady = true;
-            //     skeletonApp.setAppUrl('http://localhost:3000');
+                // Set the app URL to our local server
+                this.isServerReady = true;
+                skeletonApp.setAppUrl('http://localhost:3000');
                 
-            //     // Log success
-            //     log.info('Local Meteor server started successfully');
-            //     this.updateLoadingStatus('Server ready, starting application...');
-            // } catch (error) {
-            //     log.error('Failed to start server:', error);
-            //     this.updateLoadingStatus(`Error: ${error.message}`, 'error');
+                // Log success
+                log.info('Local Meteor server started successfully');
+                this.updateLoadingStatus('Server ready, starting application...');
+            } catch (error) {
+                log.error('Failed to start server:', error);
+                this.updateLoadingStatus(`Error: ${error.message}`, 'error');
                 
-            //     // Show error dialog
-            //     setTimeout(() => {
-            //         this.displayRestartDialog(
-            //             'Server Error',
-            //             'Failed to start application server.',
-            //             error.message
-            //         );
-            //     }, 1000);
-            // }
+                // Show error dialog
+                setTimeout(() => {
+                    this.displayRestartDialog(
+                        'Server Error',
+                        'Failed to start application server.',
+                        error.message
+                    );
+                }, 1000);
+            }
         });
         
         // Handle window events
@@ -145,53 +120,9 @@ export default class Desktop {
             }
         });
 
-        console.log('App data path:', app.getPath('userData'));
-        console.log('Log path:', app.getPath('logs'));
-    }
-    
-    createTestPage() {
-      const testHtml = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Electron Test</title>
-        </head>
-        <body>
-          <h1>Electron is working!</h1>
-          <p>This is a test page to verify Electron is functioning correctly.</p>
-          <button id="checkMongo">Check MongoDB</button>
-          <button id="checkMeteor">Check Meteor</button>
-          <div id="status"></div>
-          
-          <script>
-            document.getElementById('checkMongo').addEventListener('click', async () => {
-              try {
-                const result = await fetch('http://localhost:27018');
-                document.getElementById('status').innerHTML = 'MongoDB response: ' + result.status;
-              } catch (err) {
-                document.getElementById('status').innerHTML = 'MongoDB error: ' + err.message;
-              }
-            });
-            
-            document.getElementById('checkMeteor').addEventListener('click', async () => {
-              try {
-                const result = await fetch('http://localhost:3000');
-                document.getElementById('status').innerHTML = 'Meteor response: ' + result.status;
-              } catch (err) {
-                document.getElementById('status').innerHTML = 'Meteor error: ' + err.message;
-              }
-            });
-          </script>
-        </body>
-        </html>
-      `;
-      
-      console.log('App data path:', app.getPath('userData'));
-      console.log('Log path:', app.getPath('logs'));
-
-      const testPath = path.join(app.getPath('temp'), 'electron-test.html');
-      fs.writeFileSync(testPath, testHtml);
-      return testPath;
+        this.log.info('Desktop module initialized');
+        this.log.info('App data path:', app.getPath('userData'));
+        this.log.info('Log path:', app.getPath('logs'));
     }
 
     /**
@@ -276,7 +207,6 @@ export default class Desktop {
             </style>
         </head>
         <body>
-            <img class="logo" src="${iconPath}" alt="App Logo">
             <h2>Starting Application</h2>
             <div class="spinner"></div>
             <div id="status" class="status">Initializing...</div>
@@ -316,28 +246,6 @@ export default class Desktop {
         
         return this.loaderWindow;
     }
-
-    async checkServerConnection(url, serviceName) {
-      this.log.info(`Checking ${serviceName} connection at ${url}...`);
-      
-      return new Promise((resolve) => {
-          const req = require('http').get(url, (res) => {
-              this.log.info(`${serviceName} responded with status: ${res.statusCode}`);
-              resolve(true);
-          });
-          
-          req.on('error', (err) => {
-              this.log.error(`${serviceName} connection error: ${err.message}`);
-              resolve(false);
-          });
-          
-          req.setTimeout(5000, () => {
-              req.abort();
-              this.log.error(`${serviceName} connection timeout`);
-              resolve(false);
-          });
-      });
-    }
     
     /**
      * Update the loading status displayed to the user
@@ -372,38 +280,17 @@ export default class Desktop {
         
         // Start MongoDB
         this.updateLoadingStatus('Starting database...');
-        await this.startMongoDB(mongoDbPath);
-
-        try {
-          // Test MongoDB connection
-          const { MongoClient } = require('mongodb');
-          const client = new MongoClient(`mongodb://localhost:${mongoPort}`);
-          await client.connect();
-          this.log.info('Successfully connected to MongoDB');
-          await client.close();
-        } catch (err) {
-            this.log.error(`Failed to connect to MongoDB: ${err.message}`);
-            console.error(`Failed to connect to MongoDB: ${err.message}`);
-        }
+        const mongoPort = await this.startMongoDB(mongoDbPath);
         
         // Start Meteor server
         this.updateLoadingStatus('Starting application server...');
-        await this.startMeteorServer();
-
-        // Check the connection
-        const meteorReachable = await this.checkServerConnection('http://localhost:3000', 'Meteor');
-        if (!meteorReachable) {
-            this.log.error('Meteor server is not reachable after startup');
-        } else {
-            this.log.info('Meteor server is reachable!');
-            
-            // Now try to load the Meteor app
-            this.skeletonApp.setAppUrl('http://localhost:3000');
-        }
+        await this.startMeteorServer(mongoPort);
     }
     
     /**
      * Starts MongoDB
+     * @param {string} dbPath - Path to store MongoDB data
+     * @returns {Promise<number>} - Port number MongoDB is running on
      */
     async startMongoDB(dbPath) {
         this.log.info('Starting MongoDB...');
@@ -417,7 +304,8 @@ export default class Desktop {
             path.join(app.getAppPath(), 'resources', 'mongodb', mongodName),
             path.join(app.getAppPath(), 'mongodb', mongodName),
             path.join(app.getAppPath(), 'app.asar.unpacked', 'resources', 'mongodb', mongodName),
-            path.join(app.getAppPath(), 'app.asar.unpacked', 'mongodb', mongodName)
+            path.join(app.getAppPath(), 'app.asar.unpacked', 'mongodb', mongodName),
+            path.join(app.getAppPath(), 'mongodb-binaries', process.platform, mongodName)
         ];
         
         for (const possiblePath of possiblePaths) {
@@ -474,15 +362,11 @@ export default class Desktop {
     
     /**
      * Starts Meteor server
+     * @param {number} mongoPort - MongoDB port to connect to
      */
-    async startMeteorServer() {
+    async startMeteorServer(mongoPort) {
         this.log.info('Starting Meteor server...');
         
-        this.log.info(`Looking for Meteor bundle at possible paths:`);
-        for (const possiblePath of possiblePaths) {
-            this.log.info(`- ${possiblePath} exists: ${fs.existsSync(possiblePath)}`);
-        }
-
         // Meteor app bundle path
         let meteorBundlePath;
         const possiblePaths = [
@@ -491,6 +375,12 @@ export default class Desktop {
             path.join(app.getAppPath(), 'app.asar.unpacked', 'meteor-bundle'),
             path.join(app.getAppPath(), 'app.asar.unpacked', 'resources', 'meteor-bundle')
         ];
+        
+        // Check which paths exist
+        this.log.info('Checking Meteor bundle paths:');
+        possiblePaths.forEach(p => {
+            this.log.info(`- ${p}: ${fs.existsSync(p)}`);
+        });
         
         for (const possiblePath of possiblePaths) {
             if (fs.existsSync(possiblePath)) {
@@ -511,9 +401,6 @@ export default class Desktop {
             throw new Error(`Meteor bundle main.js not found at: ${mainJsPath}`);
         }
         
-        // MongoDB port
-        const mongoPort = this.appSettings.mongoPort || 27018;
-        
         // Meteor port
         const meteorPort = this.appSettings.port || 3000;
         
@@ -526,25 +413,15 @@ export default class Desktop {
             MONGO_URL: mongoUrl,
             ROOT_URL: `http://localhost:${meteorPort}`,
             PORT: meteorPort.toString(),
-            NODE_ENV: process.env.NODE_ENV || 'production'
+            NODE_ENV: 'production',
+            METEOR_OFFLINE_CATALOG: 'true',
+            DISABLE_WEBSOCKETS: '1',
+            METEOR_DISABLE_HOT_MODULE_REPLACEMENT: '1'
         };
         
         // Add custom settings from the appSettings
         if (this.appSettings.meteorSettings) {
             env.METEOR_SETTINGS = JSON.stringify(this.appSettings.meteorSettings);
-        }
-        
-        try {
-          const tcpPortUsed = require('tcp-port-used');
-          const portInUse = await tcpPortUsed.check(3000, '127.0.0.1');
-          this.log.info(`Port 3000 is ${portInUse ? 'already in use' : 'available'}`);
-          if (portInUse) {
-              // Try to use a different port
-              meteorPort = 3001;
-              this.log.info(`Will try port ${meteorPort} instead`);
-          }
-        } catch (err) {
-            this.log.error(`Error checking port: ${err.message}`);
         }
         
         // Start Meteor
@@ -567,7 +444,7 @@ export default class Desktop {
         });
         
         this.meteorServer.stderr.on('data', (data) => {
-            this.log.error(`Meteor error: ${data}`);
+            this.log.error(`Meteor error: ${data.toString().trim()}`);
         });
         
         // Handle Meteor server exit
@@ -588,34 +465,14 @@ export default class Desktop {
         await this.waitForPort(meteorPort, 'Meteor');
         
         this.log.info(`Meteor successfully started on port ${meteorPort}`);
-
-
-        // In the startMeteorServer method
-        this.meteorServer.stdout.on('data', (data) => {
-          const output = data.toString().trim();
-          this.log.info(`Meteor output: ${output}`);
-          console.log(`Meteor output: ${output}`);
-        });
-
-        this.meteorServer.stderr.on('data', (data) => {
-          const output = data.toString().trim();
-          this.log.error(`Meteor error: ${output}`);
-          console.error(`Meteor error: ${output}`);
-        });
-
-        this.meteorServer.on('error', (err) => {
-          this.log.error(`Meteor process error: ${err.message}`);
-          console.error(`Meteor process error: ${err.message}`);
-        });
-
-        this.meteorServer.on('exit', (code, signal) => {
-          this.log.info(`Meteor process exited with code ${code} and signal ${signal}`);
-          console.log(`Meteor process exited with code ${code} and signal ${signal}`);
-        });
     }
     
     /**
      * Wait for a port to be ready
+     * @param {number} port - Port to check
+     * @param {string} serviceName - Name of service (for logging)
+     * @param {number} maxWaitTime - Maximum time to wait in milliseconds
+     * @returns {Promise<void>}
      */
     waitForPort(port, serviceName, maxWaitTime = 60000) {
         const startTime = Date.now();
@@ -649,6 +506,7 @@ export default class Desktop {
     
     /**
      * Stop all processes
+     * @returns {Promise<void>}
      */
     async stopProcesses() {
         let promiseChain = Promise.resolve();
@@ -747,5 +605,3 @@ export default class Desktop {
         );
     }
 }
-
-

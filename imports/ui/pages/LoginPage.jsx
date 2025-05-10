@@ -9,7 +9,8 @@ import {
   Typography, 
   Link, 
   Alert, 
-  CircularProgress 
+  CircularProgress,
+  Container
 } from '@mui/material';
 import { get } from 'lodash';
 
@@ -37,56 +38,60 @@ export default function LoginPage() {
   };
 
   return (
-    <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
+    <Container maxWidth="lg">
 
-      <TextField
-        margin="normal"
-        required
-        fullWidth
-        id="username"
-        label="Username"
-        name="username"
-        autoComplete="username"
-        autoFocus
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-        disabled={isLoading}
-      />
-      
-      <TextField
-        margin="normal"
-        required
-        fullWidth
-        name="password"
-        label="Password"
-        type="password"
-        id="password"
-        autoComplete="current-password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        disabled={isLoading}
-      />
-      
-      <Button
-        type="submit"
-        fullWidth
-        variant="contained"
-        sx={{ mt: 3, mb: 2 }}
-        disabled={isLoading}
-      >
-        {isLoading ? <CircularProgress size={24} /> : 'Sign In'}
-      </Button>
-      
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-        <Link component={RouterLink} to="/register" variant="body2">
-          {"Don't have an account? Sign Up"}
-        </Link>
+      <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+
+        <TextField
+          margin="normal"
+          required
+          fullWidth
+          id="username"
+          label="Username"
+          name="username"
+          autoComplete="username"
+          autoFocus
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          disabled={isLoading}
+        />
+        
+        <TextField
+          margin="normal"
+          required
+          fullWidth
+          name="password"
+          label="Password"
+          type="password"
+          id="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          disabled={isLoading}
+        />
+        
+        <Button
+          type="submit"
+          fullWidth
+          variant="contained"
+          sx={{ mt: 3, mb: 2 }}
+          disabled={isLoading}
+        >
+          {isLoading ? <CircularProgress size={24} /> : 'Sign In'}
+        </Button>
+        
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+          <Link component={RouterLink} to="/register" variant="body2">
+            {"Don't have an account? Sign Up"}
+          </Link>
+        </Box>
       </Box>
-    </Box>
+    </Container>
+
   );
 }
