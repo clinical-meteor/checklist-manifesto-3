@@ -1,3 +1,4 @@
+// meteor-desktop.js - Updated configuration
 module.exports = {
   // Include MongoDB package in the build
   includeMongo: true,
@@ -28,20 +29,22 @@ module.exports = {
       }
     ],
     
-    // Optional: configure app name and metadata
+    // Application configuration
     appId: "com.meteor.checklistmanifesto",
     productName: "Checklist Manifesto",
     copyright: "© 2025 Your Name"
   },
   
-  // App configuration
+  // Critical: Enable desktop HCP for offline updates
+  desktopHCP: true,
+  
+  // We're bundling our own server, so disable the need for connecting to Meteor dev server
   meteor: {
-    // Disable hot code push for desktop app
-    disableDesktopHCP: true
+    // Make sure HCP works for desktop
+    disableDesktopHCP: false
   },
   
   // Window settings
-  desktopHCP: true,
   window: {
     width: 1024,
     height: 768,
@@ -55,14 +58,13 @@ module.exports = {
     }
   },
   
-  // Development settings
+  // Enable devTools in development
   devTools: true,
   
-  // Custom settings for your app
+  // Custom settings for your app - passed to Meteor
   meteorSettings: {
-    // These settings will be available in your app via Meteor.settings
+    // Public settings (available on client)
     public: {
-      // Public settings (available on client)
       isDesktop: true
     },
     // Private settings (server-only)
@@ -70,5 +72,9 @@ module.exports = {
     mongodb: {
       port: 27018
     }
-  }
+  },
+  
+  // Port configuration - where Meteor server should run
+  port: 3000,
+  mongoPort: 27018
 };

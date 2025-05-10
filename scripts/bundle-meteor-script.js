@@ -96,13 +96,15 @@ function bundleMeteorApp() {
 // Entry point for Meteor app in Electron
 const path = require('path');
 const fs = require('fs');
-const { fileURLToPath } = require('url');
 
-// Setup environment variables
+// Important: Setup environment variables for Meteor
 process.env.MONGO_URL = process.env.MONGO_URL || 'mongodb://localhost:27018/meteor';
 process.env.ROOT_URL = process.env.ROOT_URL || 'http://localhost:3000';
 process.env.PORT = process.env.PORT || '3000';
 process.env.NODE_ENV = process.env.NODE_ENV || 'production';
+process.env.DISABLE_WEBSOCKETS = '0'; // Enable WebSockets!
+process.env.METEOR_DISABLE_AUTO_RELOAD = '1'; // Disable auto reload
+process.env.METEOR_DISABLE_LIVE_RELOAD = '1'; // Disable live reload
 
 // If there are Meteor settings, load them
 if (process.env.METEOR_SETTINGS) {
@@ -114,9 +116,24 @@ if (process.env.METEOR_SETTINGS) {
   } catch (e) {
     console.error('Error parsing METEOR_SETTINGS environment variable', e);
   }
+} else {
+  // Load from settings.json if available
+  const settingsPath = path.join(__dirname, 'settings.json');
+  if (fs.existsSync(settingsPath)) {
+    try {
+      const settings = fs.readFileSync(settingsPath, 'utf8');
+      process.env.METEOR_SETTINGS = settings;
+      console.log('Loaded Meteor settings from settings.json');
+    } catch (e) {
+      console.error('Error loading settings.json:', e);
+    }
+  }
 }
 
-// Meteor 2.0+ compatibility
+// Override WebSocket behavior for desktop
+process.env.METEOR_SERVER_WEBSOCKET_ENDPOINTS = 'ws://localhost:3000/websocket';
+
+// Important for Meteor 2.0+
 process.chdir(path.join(__dirname, 'bundle'));
 
 // Start the Meteor app
@@ -125,7 +142,7 @@ require('./bundle/main.js');
 
   fs.writeFileSync(path.join(config.outputDir, 'main.js'), mainJsContent);
   
-  // Copy settings.json file if it exists
+  // Copy settings.json file
   if (Object.keys(config.meteorSettings).length > 0) {
     console.log('Creating settings.json file...');
     fs.writeFileSync(

@@ -126,6 +126,59 @@ Meteor.startup(async function() {
   
   // Check if this is the first run
   const isFirstRun = await checkFirstRun();
+
+  // For desktop apps, ensure we can connect through WebSockets
+  // This helps fix issues with WebSocket connections
+  WebApp.connectHandlers.use('/sockjs', (req, res, next) => {
+    // Set headers to allow WebSocket connection in Electron
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+    next();
+  });
+  
+  // If running in desktop mode, make sure WebSockets can connect
+  if (Meteor.settings?.isDesktop) {
+    console.log('Running in desktop mode');
+    
+    // For debugging connection issues
+    Meteor.onConnection((connection) => {
+      console.log(`New DDP connection: ${connection.id}`);
+      
+      connection.onClose(() => {
+        console.log(`DDP connection closed: ${connection.id}`);
+      });
+    });
+  }
+  
+  // For first run, create an admin user
+  if (isFirstRun) {
+    console.log('First run detected. You can create an admin user through the setup screen.');
+  }
+  
+  // For development: create a test user if none exists
+  if (process.env.NODE_ENV !== 'production') {
+    const testUsername = 'admin';
+    const testPassword = 'password';
+    
+    // Check if test user exists
+    const testUser = await Meteor.users.findOneAsync({ username: testUsername });
+    
+    if (!testUser) {
+      console.log(`Creating test user: ${testUsername}`);
+      
+      try {
+        const userId = Accounts.createUser({
+          username: testUsername,
+          password: testPassword,
+          profile: { role: 'admin' }
+        });
+        
+        console.log(`Created test user with ID: ${userId}`);
+      } catch (error) {
+        console.error('Error creating test user:', error);
+      }
+    }
+  }
   
   // Create admin user only if configured or this is first run
   const SEED_USERNAME = Meteor.settings.seedUsername || 'admin';

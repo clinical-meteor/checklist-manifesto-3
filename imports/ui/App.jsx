@@ -1,4 +1,4 @@
-// imports/ui/App.jsx
+// imports/ui/App.jsx - Improved connection handling
 import React, { useState, useEffect } from 'react';
 import { Meteor } from 'meteor/meteor';
 import { useTracker } from 'meteor/react-meteor-data';
@@ -9,7 +9,7 @@ import { CircularProgress, Box, Typography, Button } from '@mui/material';
 import MainLayout from './layouts/MainLayout';
 import AuthLayout from './layouts/AuthLayout';
 
-// Pages - Make sure all imports are correct
+// Pages
 import TaskListPage from './pages/TaskListPage';
 import TaskDetailsPage from './pages/TaskDetailsPage';
 import LoginPage from './pages/LoginPage';
@@ -20,10 +20,8 @@ import NotFoundPage from './pages/NotFoundPage';
 import FirstRunSetupPage from './pages/FirstRunSetupPage';
 import ListsPage from './pages/ListsPage';
 import ListDetailPage from './pages/ListDetailPage';
-import CombinedListsPage from './pages/CombinedListsPage';
 
 import { ThemeProvider, createTheme } from '@mui/material/styles';
-
 
 // Create theme
 const theme = createTheme({
@@ -39,22 +37,40 @@ const theme = createTheme({
  
 export function App() {
   const [isFirstRun, setIsFirstRun] = useState(false);
+  const [reconnectCount, setReconnectCount] = useState(0);
+  const [connectionError, setConnectionError] = useState(null);
   
-
   // User state and connection state combined in one tracker
   const { user, userLoading, connectionStatus } = useTracker(() => {
-    const userSub = Meteor.subscribe('userData');
+    // Only subscribe if we're connected
+    const userSub = Meteor.status().connected ? Meteor.subscribe('userData') : { ready: () => false };
     
     return {
       user: Meteor.user(),
-      userLoading: !userSub.ready(),
+      userLoading: !userSub.ready() && Meteor.status().connected,
       connectionStatus: Meteor.status(),
     };
   }, []);
 
-  // Check if we're reconnecting
+  // Are we currently reconnecting?
   const reconnecting = connectionStatus && connectionStatus.status === 'connecting';
-
+  const connected = connectionStatus && connectionStatus.status === 'connected';
+  const failed = connectionStatus && connectionStatus.status === 'failed';
+  
+  // Track the connection status
+  useEffect(() => {
+    console.log('Meteor connection status:', connectionStatus.status, '(connected:', connected, ')');
+    
+    // Reset error when connected
+    if (connected) {
+      setConnectionError(null);
+    }
+    
+    // Track failed connection attempts
+    if (failed && !connectionError) {
+      setConnectionError('Failed to connect to the application server');
+    }
+  }, [connectionStatus, connected, failed]);
 
   useEffect(() => {
     // Check first run status on mount
@@ -64,27 +80,30 @@ export function App() {
       }
     });
 
-    // Set up reconnection check interval if in desktop mode
-    let interval;
-    if (Meteor.settings?.public?.isDesktop) {
-      interval = setInterval(() => {
-        // Manual reconnection logic if needed
-        if (!Meteor.status().connected && Meteor.status().status !== 'connecting') {
-          console.log('Attempting to reconnect to server...');
-          Meteor.reconnect();
-        }
-      }, 3000);
-    }
+    // Set up reconnection check interval
+    const interval = setInterval(() => {
+      // If not connected and not already trying to connect
+      if (!Meteor.status().connected && Meteor.status().status !== 'connecting') {
+        console.log('Attempting to reconnect to server...');
+        setReconnectCount(prev => prev + 1);
+        Meteor.reconnect();
+      }
+    }, 3000);
     
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [reconnecting]);
-  
+  }, []);
 
+  // Handle manual reconnection
+  const handleManualReconnect = () => {
+    setReconnectCount(prev => prev + 1);
+    setConnectionError(null);
+    Meteor.reconnect();
+  };
 
-  // If disconnected, show reconnection UI
-  if (reconnecting) {
+  // If disconnected or reconnecting, show reconnection UI
+  if (reconnecting || (!connected && !userLoading)) {
     return (
       <ThemeProvider theme={theme}>
         <Box 
@@ -100,24 +119,45 @@ export function App() {
         >
           <CircularProgress size={60} sx={{ mb: 3 }} />
           <Typography variant="h5" gutterBottom>
-            Reconnecting to server...
+            {reconnecting ? 'Reconnecting to server...' : 'Connecting to server...'}
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-            Please wait while we re-establish connection to the application server.
+            {connectionError 
+              ? `Connection error: ${connectionError}` 
+              : 'Please wait while we establish connection to the application server.'}
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ mb: 3 }}>
+            Reconnect attempts: {reconnectCount}
           </Typography>
           <Button 
             variant="contained" 
-            onClick={() => Meteor.reconnect()} 
+            onClick={handleManualReconnect} 
             sx={{ mt: 2 }}
           >
             Reconnect Now
           </Button>
+          
+          {/* Show additional restart instructions after multiple attempts */}
+          {reconnectCount > 3 && (
+            <Box sx={{ mt: 4, p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
+              <Typography variant="body2" color="error.main" paragraph>
+                If the application doesn't connect after multiple attempts, you can try:
+              </Typography>
+              <Typography variant="body2" component="div">
+                <ul>
+                  <li>Restarting the application</li>
+                  <li>Checking your computer's internet connection</li>
+                  <li>Clearing application cache (if applicable)</li>
+                </ul>
+              </Typography>
+            </Box>
+          )}
         </Box>
       </ThemeProvider>
     );
   }
 
-
+  // If still loading user data, show loading screen
   if (userLoading) {
     return (
       <ThemeProvider theme={theme}>
@@ -132,7 +172,7 @@ export function App() {
         >
           <CircularProgress size={40} />
           <Typography variant="h6" sx={{ mt: 2 }}>
-            Loading user...
+            Loading user data...
           </Typography>
         </Box>
       </ThemeProvider>
@@ -187,4 +227,3 @@ export function App() {
     </ThemeProvider>
   );
 }
-
