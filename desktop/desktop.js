@@ -1,3 +1,6 @@
+
+
+
 import process from 'process';
 import { app, dialog, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
@@ -267,12 +270,374 @@ export default class Desktop {
             }
         });
 
+        // Add Debug Menu for development and troubleshooting
+        app.whenReady().then(() => {
+            this.writeToLogFile('Setting up debug menu');
+            
+            // Create a debug menu
+            const { Menu, MenuItem } = require('electron');
+            const debugMenu = new Menu();
+            
+            // Add menu items for diagnostics and control
+            debugMenu.append(new MenuItem({ 
+                label: 'Start/Restart Server', 
+                click: async () => {
+                    this.writeToLogFile('Manual server restart requested from debug menu');
+                    try {
+                        await this.stopProcesses();
+                        await this.checkFileSystem();
+                        await this.startProcesses();
+                        this.writeToLogFile('Manual server restart completed');
+                        
+                        // Show confirmation dialog
+                        dialog.showMessageBox({
+                            type: 'info',
+                            buttons: ['OK'],
+                            title: 'Server Restart',
+                            message: 'Server processes restarted successfully',
+                            detail: 'MongoDB and Meteor server have been restarted.'
+                        });
+                    } catch (error) {
+                        this.writeToLogFile(`Error during manual restart: ${error.message}`);
+                        this.displayRestartDialog(
+                            'Manual Restart Failed',
+                            'Failed to restart server processes',
+                            error.message
+                        );
+                    }
+                }
+            }));
+            
+            debugMenu.append(new MenuItem({ 
+                label: 'Check File System', 
+                click: async () => {
+                    this.writeToLogFile('Manual file system check requested from debug menu');
+                    try {
+                        await this.checkFileSystem();
+                        
+                        // Show file system check results
+                        dialog.showMessageBox({
+                            type: 'info',
+                            buttons: ['OK', 'Show Logs'],
+                            title: 'File System Check',
+                            message: 'File system check completed',
+                            detail: 'Check the application log file for detailed results.'
+                        }, (response) => {
+                            if (response === 1) {
+                                const { shell } = require('electron');
+                                shell.openPath(this.logFilePath);
+                            }
+                        });
+                    } catch (error) {
+                        this.writeToLogFile(`Error during file system check: ${error.message}`);
+                        dialog.showErrorBox(
+                            'File System Check Failed',
+                            `Error: ${error.message}`
+                        );
+                    }
+                }
+            }));
+            
+            debugMenu.append(new MenuItem({ 
+                label: 'Show Logs', 
+                click: () => {
+                    this.writeToLogFile('Opening log file from debug menu');
+                    const { shell } = require('electron');
+                    shell.openPath(this.logFilePath);
+                }
+            }));
+            
+            debugMenu.append(new MenuItem({ type: 'separator' }));
+            
+            debugMenu.append(new MenuItem({ 
+                label: 'Reload UI', 
+                click: () => {
+                    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+                        this.writeToLogFile('Reloading main window from debug menu');
+                        this.mainWindow.reload();
+                    }
+                }
+            }));
+            
+            // Register the debug menu to appear on right-click
+            if (this.appSettings.devTools) {
+                this.writeToLogFile('Registering debug context menu');
+                app.on('browser-window-created', (event, window) => {
+                    window.webContents.on('context-menu', (e, params) => {
+                        debugMenu.popup();
+                    });
+                });
+                
+                // Also add a global application menu with debug options (for Mac)
+                if (process.platform === 'darwin') {
+                    const template = [
+                        {
+                            label: 'Debug',
+                            submenu: [
+                                { 
+                                    label: 'Start/Restart Server',
+                                    click: async () => {
+                                        this.writeToLogFile('Manual server restart requested from menu');
+                                        try {
+                                            await this.stopProcesses();
+                                            await this.checkFileSystem();
+                                            await this.startProcesses();
+                                            this.writeToLogFile('Manual server restart completed');
+                                        } catch (error) {
+                                            this.writeToLogFile(`Error during manual restart: ${error.message}`);
+                                            this.displayRestartDialog(
+                                                'Manual Restart Failed',
+                                                'Failed to restart server processes',
+                                                error.message
+                                            );
+                                        }
+                                    }
+                                },
+                                { 
+                                    label: 'Check File System',
+                                    click: async () => {
+                                        this.writeToLogFile('Manual file system check from menu');
+                                        await this.checkFileSystem();
+                                    }
+                                },
+                                { 
+                                    label: 'Show Logs',
+                                    click: () => {
+                                        const { shell } = require('electron');
+                                        shell.openPath(this.logFilePath);
+                                    }
+                                },
+                                { type: 'separator' },
+                                { 
+                                    label: 'Reload UI',
+                                    accelerator: 'CmdOrCtrl+R',
+                                    click: () => {
+                                        if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+                                            this.mainWindow.reload();
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    ];
+                    
+                    // If we have an existing menu, add to it; otherwise create a new one
+                    const existingMenu = Menu.getApplicationMenu();
+                    if (existingMenu) {
+                        for (const item of template[0].submenu) {
+                            existingMenu.append(new MenuItem(item));
+                        }
+                        Menu.setApplicationMenu(existingMenu);
+                    } else {
+                        Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+                    }
+                }
+            }
+        }).catch(err => {
+            this.writeToLogFile(`Error setting up debug menu: ${err.message}`);
+        });
+
         this.log.info('Desktop module initialized');
         this.writeToLogFile('Desktop module initialized');
         this.log.info('App data path:', app.getPath('userData'));
         this.log.info('Log path:', app.getPath('logs'));
+
+                // Add immediate startup trigger for environments where beforeLoadUrl might not fire
+        this.writeToLogFile('Scheduling immediate server startup check...');
+        setTimeout(async () => {
+            this.writeToLogFile('Immediate server startup check triggered');
+            try {
+                // Check if server is already running
+                const meteorPort = this.appSettings.port || 3000;
+                const meteorRunning = await this.testPort(meteorPort, 'Meteor');
+                
+                if (!meteorRunning) {
+                    this.writeToLogFile('Meteor server not detected - initiating startup sequence');
+                    
+                    if (this.loaderWindow) {
+                        this.updateLoadingStatus('Starting server processes...');
+                    }
+                    
+                    // Perform file system check to locate binaries
+                    await this.checkFileSystem();
+                    
+                    // Start server processes
+                    await this.startProcesses();
+                    
+                    this.writeToLogFile('Server startup attempt completed');
+                    
+                    // Configure URL for skeleton app
+                    const serverUrl = `http://localhost:${meteorPort}`;
+                    skeletonApp.setAppUrl(serverUrl);
+                    
+                    // Configure public settings for server info
+                    if (!this.appSettings.meteorSettings) {
+                        this.appSettings.meteorSettings = {};
+                    }
+                    if (!this.appSettings.meteorSettings.public) {
+                        this.appSettings.meteorSettings.public = {};
+                    }
+                    this.appSettings.meteorSettings.public.serverInfo = {
+                        url: serverUrl,
+                        meteorPort: meteorPort,
+                        mongoPort: this.appSettings.mongoPort || 27018,
+                        platform: process.platform,
+                        arch: process.arch,
+                        version: app.getVersion(),
+                        userDataPath: app.getPath('userData'),
+                        logPath: app.getPath('logs')
+                    };
+                    
+                    if (this.loaderWindow) {
+                        this.updateLoadingStatus('Server ready, starting application...');
+                    }
+                } else {
+                    this.writeToLogFile('Meteor server already appears to be running');
+                }
+            } catch (error) {
+                this.writeToLogFile(`Error during immediate startup: ${error.message}`);
+                this.log.error('Error during immediate startup:', error);
+                
+                if (this.loaderWindow) {
+                    this.updateLoadingStatus(`Error: ${error.message}`, 'error');
+                }
+                
+                // Show error dialog
+                setTimeout(() => {
+                    this.displayRestartDialog(
+                        'Server Error',
+                        'Failed to start application server during immediate startup.',
+                        error.message
+                    );
+                }, 1000);
+            }
+        }, 2000); // Delay by 2 seconds to allow app initialization
     }
     
+    /**
+     * Displays a detailed error dialog with file paths and error info
+     * @param {string} title - Dialog title
+     * @param {string} message - Main error message
+     * @param {string} details - Technical details of the error
+     * @param {Object} paths - Object containing paths that were checked
+     */
+    displayPathErrorDialog(title, message, details, paths = {}) {
+        this.writeToLogFile(`Displaying path error dialog: ${title} - ${message} - ${details}`);
+        
+        // Format paths for display
+        let pathsText = '';
+        if (paths) {
+            pathsText = 'Checked paths:\n';
+            for (const [name, value] of Object.entries(paths)) {
+                pathsText += `${name}: ${value}\n`;
+            }
+        }
+        
+        // Create full details text
+        const fullDetails = `${details}\n\n${pathsText}\n\nApp Paths:\nApp Path: ${app.getAppPath()}\nResources Path: ${process.resourcesPath}\nUser Data: ${app.getPath('userData')}`;
+        
+        dialog.showMessageBox(
+            {
+                type: 'error',
+                buttons: ['Close App', 'Show Logs'],
+                title,
+                message,
+                detail: fullDetails
+            },
+            (response) => {
+                if (response === 0) {
+                    this.writeToLogFile('User chose to close the application');
+                    app.exit(0);
+                } else if (response === 1) {
+                    this.writeToLogFile('User requested to see logs');
+                    // Open logs in default text editor
+                    const { shell } = require('electron');
+                    shell.openPath(this.logFilePath);
+                }
+            }
+        );
+    }
+
+    /**
+    * Check file system and report detailed info about expected binaries
+    */
+    async checkFileSystem() {
+        this.writeToLogFile('------ File System Check ------');
+        
+        // Check app paths
+        this.writeToLogFile(`App Path: ${app.getAppPath()}`);
+        this.writeToLogFile(`Resources Path: ${process.resourcesPath}`);
+        this.writeToLogFile(`User Data Path: ${app.getPath('userData')}`);
+        
+        // Check if app.asar exists
+        const asarPath = path.join(app.getAppPath(), 'app.asar');
+        const asarExists = fs.existsSync(asarPath);
+        this.writeToLogFile(`app.asar exists: ${asarExists}`);
+        
+        // Check for mongodb-binaries directory
+        const mongoBinariesBasePaths = [
+            path.join(app.getAppPath(), 'mongodb-binaries'),
+            path.join(process.resourcesPath, 'mongodb-binaries'),
+            path.join(app.getAppPath(), '..', 'mongodb-binaries'),
+            path.join(process.resourcesPath, '..', 'mongodb-binaries')
+        ];
+        
+        this.writeToLogFile('Checking MongoDB binaries paths:');
+        for (const basePath of mongoBinariesBasePaths) {
+            const exists = fs.existsSync(basePath);
+            this.writeToLogFile(`- ${basePath}: ${exists}`);
+            
+            if (exists) {
+                // Check platform subdirectory
+                const platformPath = path.join(basePath, process.platform);
+                const platformExists = fs.existsSync(platformPath);
+                this.writeToLogFile(`  - ${platformPath}: ${platformExists}`);
+                
+                if (platformExists) {
+                    // List contents
+                    try {
+                        const files = fs.readdirSync(platformPath);
+                        this.writeToLogFile(`    Contents: ${files.join(', ')}`);
+                    } catch (err) {
+                        this.writeToLogFile(`    Error reading directory: ${err.message}`);
+                    }
+                }
+            }
+        }
+            
+            // Check for meteor-bundle directory
+            const meteorBundleBasePaths = [
+                path.join(app.getAppPath(), 'meteor-bundle'),
+                path.join(process.resourcesPath, 'meteor-bundle'),
+                path.join(app.getAppPath(), '..', 'meteor-bundle'),
+                path.join(process.resourcesPath, '..', 'meteor-bundle')
+            ];
+            
+            this.writeToLogFile('Checking Meteor bundle paths:');
+            for (const basePath of meteorBundleBasePaths) {
+                const exists = fs.existsSync(basePath);
+                this.writeToLogFile(`- ${basePath}: ${exists}`);
+                
+                if (exists) {
+                    // Check for main.js
+                    const mainJsPath = path.join(basePath, 'main.js');
+                    const mainJsExists = fs.existsSync(mainJsPath);
+                    this.writeToLogFile(`  - ${mainJsPath}: ${mainJsExists}`);
+                    
+                    // List contents
+                    try {
+                        const files = fs.readdirSync(basePath);
+                        this.writeToLogFile(`  Contents: ${files.join(', ')}`);
+                    } catch (err) {
+                        this.writeToLogFile(`  Error reading directory: ${err.message}`);
+                    }
+                }
+            }
+            
+            this.writeToLogFile('------ End File System Check ------');
+    }
+    
+
     /**
      * Writes a message to the log file
      * @param {string} message - The message to log

@@ -211,6 +211,9 @@ async function packageMongoDB() {
   }
   
   console.log('MongoDB packaging complete!');
+  
+  // Explicitly exit the process when done
+  process.exit(0);
 }
 
 // Run the packaging process

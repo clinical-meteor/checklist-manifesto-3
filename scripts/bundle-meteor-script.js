@@ -188,3 +188,7 @@ function copyDirectory(src, dest) {
 
 // Run the bundling process
 bundleMeteorApp();
+
+// Explicitly exit after completion
+console.log('Bundle script completed successfully, exiting process.');
+process.exit(0);

@@ -32,7 +32,7 @@ module.exports = {
     // Application configuration
     appId: "com.meteor.checklistmanifesto",
     productName: "Checklist Manifesto",
-    copyright: "© 2025 Your Name"
+    copyright: "© 2025 Abbie Watson"
   },
   
   // Critical: Enable desktop HCP for offline updates
